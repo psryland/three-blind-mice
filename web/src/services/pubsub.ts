@@ -211,13 +211,12 @@ export class PubSubClient {
 
 	private async Negotiate(): Promise<string | null> {
 		try {
-			const response = await fetch(this.m_negotiate_url, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					room: this.m_room,
-					user_id: this.m_user_id,
-				}),
+			const params = new URLSearchParams({
+				room: this.m_room,
+				user: this.m_user_id,
+			});
+			const response = await fetch(`${this.m_negotiate_url}?${params}`, {
+				method: 'GET',
 			});
 			if (!response.ok) {
 				console.error(`Negotiate failed: ${response.status}`);

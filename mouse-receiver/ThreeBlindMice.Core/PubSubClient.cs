@@ -106,9 +106,8 @@ public class PubSubClient : IDisposable
 		try
 		{
 			using var http = new HttpClient();
-			var request_body = JsonSerializer.Serialize(new { user_id = m_user_id });
-			var content = new StringContent(request_body, Encoding.UTF8, "application/json");
-			var response = await http.PostAsync(m_negotiate_url, content, ct);
+			var url = $"{m_negotiate_url}?room={Uri.EscapeDataString(m_room)}&user={Uri.EscapeDataString(m_user_id)}";
+			var response = await http.GetAsync(url, ct);
 			response.EnsureSuccessStatusCode();
 
 			var json = await response.Content.ReadAsStringAsync(ct);
