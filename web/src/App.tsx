@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import RoomPanel from './components/RoomPanel';
 import MouseCanvas from './components/MouseCanvas';
 import UserList from './components/UserList';
+import ConstrainPanel from './components/ConstrainPanel';
 import { PubSubClient, PubSubMessage } from './services/pubsub';
 import { User, CURSOR_COLOURS } from './types';
 import './App.css';
@@ -107,58 +108,65 @@ function App() {
 
 	return (
 		<div className="app">
-			<h1>Three Blind Mice</h1>
+			<header className="app-header">
+				<h1>Three Blind Mice</h1>
+				<span className="app-header-url">https://three-blind-mice.rylogic.co.nz</span>
+			</header>
 
-			<div className="app-layout">
-				<div className="app-left">
-					<div className="name-input">
-						<label htmlFor="user-name">Your Name: </label>
-						<input
-							id="user-name"
-							type="text"
-							placeholder="Enter your name"
-							value={user_name}
-							onChange={(e) => set_user_name(e.target.value)}
-							maxLength={32}
-							disabled={room_code !== null}
-						/>
+			<div className="app-body">
+				<div className="app-layout">
+					<div className="app-left">
+						<div className="name-input">
+							<label htmlFor="user-name">Your Name</label>
+							<input
+								id="user-name"
+								type="text"
+								placeholder="Enter your name"
+								value={user_name}
+								onChange={(e) => set_user_name(e.target.value)}
+								maxLength={32}
+								disabled={room_code !== null}
+							/>
+						</div>
+
+						<ConstrainPanel />
+
+						{show_canvas && (
+							<MouseCanvas
+								aspect_ratio={aspect_ratio}
+								on_cursor_move={handle_cursor_move}
+								user_name={user_name || 'Anonymous'}
+								user_colour={user_colour}
+							/>
+						)}
+
+						{room_code && !connected && (
+							<div className="canvas-placeholder">
+								<p>Connecting to room <strong>{room_code}</strong>…</p>
+							</div>
+						)}
+
+						{room_code && is_host && connected && (
+							<div className="canvas-placeholder">
+								<p>
+									Hosting room <strong>{room_code}</strong>
+								</p>
+								<p className="placeholder-hint">Run the desktop overlay to receive mouse input</p>
+							</div>
+						)}
 					</div>
 
-					{show_canvas && (
-						<MouseCanvas
-							aspect_ratio={aspect_ratio}
-							on_cursor_move={handle_cursor_move}
-							user_name={user_name || 'Anonymous'}
-							user_colour={user_colour}
+					<div className="app-right">
+						<RoomPanel
+							on_join={handle_join}
+							on_leave={handle_leave}
+							room_code={room_code}
 						/>
-					)}
 
-					{room_code && !connected && (
-						<div className="canvas-placeholder">
-							<p>Connecting to room <strong>{room_code}</strong>…</p>
-						</div>
-					)}
-
-					{room_code && is_host && connected && (
-						<div className="canvas-placeholder">
-							<p>
-								Hosting room <strong>{room_code}</strong>
-							</p>
-							<p className="placeholder-hint">Run the desktop overlay to receive mouse input</p>
-						</div>
-					)}
-				</div>
-
-				<div className="app-right">
-					<RoomPanel
-						on_join={handle_join}
-						on_leave={handle_leave}
-						room_code={room_code}
-					/>
-
-					{room_code && (
-						<UserList users={users} current_user_id={user_id} />
-					)}
+						{room_code && (
+							<UserList users={users} current_user_id={user_id} />
+						)}
+					</div>
 				</div>
 			</div>
 		</div>

@@ -1,0 +1,51 @@
+/* Constrain panel card */
+.constrain-panel {
+	background: var(--color-card-bg);
+	border: 1px solid var(--color-card-border);
+	border-radius: 8px;
+	padding: 1rem 1.25rem;
+	text-align: left;
+}
+
+.constrain-panel h3 {
+	margin: 0 0 0.75rem;
+	font-size: 0.8rem;
+	font-weight: 600;
+	color: var(--color-primary);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.constrain-panel-options {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.constrain-panel-option {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	cursor: pointer;
+	font-size: 0.9rem;
+	color: var(--color-text);
+	padding: 0.35rem 0.5rem;
+	border-radius: 6px;
+	transition: background 0.12s;
+}
+
+.constrain-panel-option:hover {
+	background: #F5F7FA;
+}
+
+.constrain-panel-option input[type="radio"] {
+	accent-color: var(--color-primary);
+	width: 16px;
+	height: 16px;
+	margin: 0;
+	cursor: pointer;
+}
+
+.constrain-panel-option label {
+	cursor: pointer;
+}

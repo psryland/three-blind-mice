@@ -55,7 +55,7 @@ export default function RoomPanel({ on_join, on_leave, room_code }: RoomPanelPro
 					<h2>Room: <span className="room-code">{room_code}</span></h2>
 					<div className="shareable-url">
 						<input type="text" readOnly value={shareable_url} />
-						<button onClick={handle_copy_link}>{copy_label}</button>
+						<button className="btn-primary" onClick={handle_copy_link}>{copy_label}</button>
 					</div>
 					<button className="leave-btn" onClick={on_leave}>Leave Room</button>
 				</div>
@@ -68,7 +68,7 @@ export default function RoomPanel({ on_join, on_leave, room_code }: RoomPanelPro
 		<div className="room-panel">
 			<div className="room-section">
 				<h3>Create Room</h3>
-				<button onClick={handle_create}>Create New Room</button>
+				<button className="btn-primary" onClick={handle_create}>Create New Room</button>
 			</div>
 
 			<div className="room-divider">or</div>

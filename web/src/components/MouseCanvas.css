@@ -1,17 +1,26 @@
+/* Screen preview wrapper */
 .mouse-canvas-wrapper {
 	position: relative;
 	width: 100%;
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	background: var(--color-card-bg);
+	border: 1px solid var(--color-card-border);
+	border-radius: 8px;
+	padding: 0.75rem;
+	flex: 1;
 }
 
+/* The canvas itself — dark "screen" look */
 .mouse-canvas {
 	position: relative;
-	background: #e8e8e8;
-	border: 2px solid #bbb;
-	border-radius: 10px;
-	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+	background: linear-gradient(145deg, #1a1a2e, #16213e);
+	border: 2px solid #2a2a4a;
+	border-radius: 8px;
+	box-shadow:
+		0 4px 16px rgba(0, 0, 0, 0.2),
+		inset 0 1px 0 rgba(255, 255, 255, 0.04);
 	overflow: hidden;
 	cursor: crosshair;
 	user-select: none;
@@ -19,15 +28,20 @@
 
 .mouse-canvas.locked {
 	cursor: none;
+	border-color: var(--color-primary);
+	box-shadow:
+		0 4px 16px rgba(0, 0, 0, 0.2),
+		0 0 0 2px rgba(74, 144, 217, 0.3);
 }
 
+/* Subtle grid overlay */
 .mouse-canvas-grid {
 	position: absolute;
 	inset: 0;
 	pointer-events: none;
 	background-image:
-		linear-gradient(to right, rgba(0, 0, 0, 0.04) 1px, transparent 1px),
-		linear-gradient(to bottom, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+		linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+		linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
 	background-size: 10% 10%;
 }
 
@@ -38,12 +52,12 @@
 	align-items: center;
 	justify-content: center;
 	pointer-events: none;
-	color: #888;
-	font-size: 1.1rem;
+	color: rgba(255, 255, 255, 0.4);
+	font-size: 1rem;
 	font-style: italic;
-	text-shadow: 0 1px 2px rgba(255, 255, 255, 0.6);
 }
 
+/* Cursor dot */
 .mouse-canvas-cursor {
 	position: absolute;
 	width: 16px;
@@ -51,17 +65,18 @@
 	border-radius: 50%;
 	transform: translate(-50%, -50%);
 	pointer-events: none;
-	border: 2px solid rgba(255, 255, 255, 0.8);
-	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+	border: 2px solid rgba(255, 255, 255, 0.85);
+	box-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
 }
 
 .mouse-canvas-cursor-label {
 	position: absolute;
-	left: 12px;
+	left: 14px;
 	top: -4px;
 	font-size: 0.7rem;
 	white-space: nowrap;
-	color: #333;
+	color: rgba(255, 255, 255, 0.85);
 	font-weight: 600;
 	pointer-events: none;
+	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
 }

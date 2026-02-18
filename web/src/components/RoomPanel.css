@@ -1,27 +1,87 @@
-.room-panel {
-	max-width: 400px;
-	margin: 1rem auto;
-	padding: 1.5rem;
-	border: 1px solid #ddd;
-	border-radius: 8px;
-	background: #fafafa;
+/* Shared button base */
+button {
+	padding: 0.5rem 1rem;
+	border: 1px solid var(--color-card-border);
+	border-radius: 6px;
+	background: #fff;
+	cursor: pointer;
+	font-size: 0.9rem;
+	font-weight: 500;
+	transition: background 0.15s, border-color 0.15s;
 }
 
+button:hover:not(:disabled) {
+	background: #F5F5F5;
+}
+
+button:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+/* Primary button style */
+.btn-primary {
+	background: var(--color-primary);
+	color: #fff;
+	border-color: var(--color-primary);
+}
+
+.btn-primary:hover:not(:disabled) {
+	background: var(--color-primary-hover);
+	border-color: var(--color-primary-hover);
+}
+
+/* Room panel container */
+.room-panel {
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+}
+
+/* Card style for each section */
 .room-section {
-	margin: 1rem 0;
+	background: var(--color-card-bg);
+	border: 1px solid var(--color-card-border);
+	border-radius: 8px;
+	padding: 1.25rem;
 }
 
 .room-section h3 {
-	margin: 0 0 0.5rem;
+	margin: 0 0 0.75rem;
+	font-size: 0.95rem;
+	font-weight: 600;
+	color: var(--color-text);
 }
 
+/* "or" divider between cards */
 .room-divider {
 	text-align: center;
-	color: #999;
-	margin: 1rem 0;
+	color: var(--color-text-muted);
+	font-size: 0.85rem;
 	font-style: italic;
+	position: relative;
+	margin: 0.25rem 0;
 }
 
+.room-divider::before,
+.room-divider::after {
+	content: '';
+	position: absolute;
+	top: 50%;
+	width: 35%;
+	height: 1px;
+	background: var(--color-card-border);
+}
+
+.room-divider::before {
+	left: 0;
+}
+
+.room-divider::after {
+	right: 0;
+}
+
+/* Join controls */
 .join-controls {
 	display: flex;
 	gap: 0.5rem;
@@ -29,66 +89,82 @@
 
 .join-controls input {
 	flex: 1;
-	padding: 0.4rem 0.6rem;
-	border: 1px solid #ccc;
-	border-radius: 4px;
-	font-size: 1rem;
+	padding: 0.5rem 0.75rem;
+	border: 1px solid var(--color-card-border);
+	border-radius: 6px;
+	font-size: 0.9rem;
+	color: var(--color-text);
 }
 
+.join-controls input:focus {
+	outline: none;
+	border-color: var(--color-primary);
+	box-shadow: 0 0 0 3px rgba(74, 144, 217, 0.15);
+}
+
+/* Create room button full width */
+.room-section .btn-primary {
+	width: 100%;
+}
+
+/* Active room card */
 .room-active {
+	background: var(--color-card-bg);
+	border: 1px solid var(--color-card-border);
+	border-radius: 8px;
+	padding: 1.25rem;
 	text-align: center;
 }
 
+.room-active h2 {
+	margin: 0 0 0.75rem;
+	font-size: 1rem;
+	font-weight: 600;
+	color: var(--color-text);
+}
+
 .room-code {
-	font-family: monospace;
-	font-size: 1.4em;
-	letter-spacing: 0.1em;
-	color: #4ECDC4;
+	font-family: "Cascadia Code", "Fira Code", "Consolas", monospace;
+	font-size: 1.5em;
+	letter-spacing: 0.12em;
+	color: var(--color-primary);
+	font-weight: 700;
 }
 
 .shareable-url {
 	display: flex;
 	gap: 0.5rem;
-	margin: 1rem 0;
+	margin: 0.75rem 0 1rem;
 }
 
 .shareable-url input {
 	flex: 1;
-	padding: 0.4rem 0.6rem;
-	border: 1px solid #ccc;
-	border-radius: 4px;
-	font-size: 0.85rem;
+	padding: 0.45rem 0.6rem;
+	border: 1px solid var(--color-card-border);
+	border-radius: 6px;
+	font-size: 0.8rem;
+	color: var(--color-text-muted);
+	background: #F8F9FA;
 }
 
+.shareable-url button {
+	white-space: nowrap;
+}
+
+/* Leave button */
 .leave-btn {
 	margin-top: 0.5rem;
-	background: #e74c3c;
+	background: var(--color-danger);
 	color: white;
 	border: none;
 	padding: 0.5rem 1.5rem;
-	border-radius: 4px;
+	border-radius: 6px;
 	cursor: pointer;
-	font-size: 1rem;
+	font-size: 0.9rem;
+	font-weight: 500;
+	transition: background 0.15s;
 }
 
 .leave-btn:hover {
-	background: #c0392b;
-}
-
-button {
-	padding: 0.5rem 1rem;
-	border: 1px solid #ccc;
-	border-radius: 4px;
-	background: #fff;
-	cursor: pointer;
-	font-size: 1rem;
-}
-
-button:hover:not(:disabled) {
-	background: #eee;
-}
-
-button:disabled {
-	opacity: 0.5;
-	cursor: not-allowed;
+	background: var(--color-danger-hover);
 }

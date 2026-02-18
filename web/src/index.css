@@ -1,25 +1,38 @@
+*, *::before, *::after {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+}
+
 :root {
-	color: rgba(255, 255, 255, 0.87);
-	background-color: #242424;
+	--color-primary: #4A90D9;
+	--color-primary-hover: #3A7BC8;
+	--color-header-start: #3B7DD8;
+	--color-header-end: #5BA3E6;
+	--color-card-bg: #ffffff;
+	--color-card-border: #E0E0E0;
+	--color-text: #333333;
+	--color-text-muted: #888888;
+	--color-success: #28A745;
+	--color-danger: #e74c3c;
+	--color-danger-hover: #c0392b;
+	--color-bg: #F0F2F5;
+
+	color: var(--color-text);
+	background-color: var(--color-bg);
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", Arial, sans-serif;
+	font-size: 15px;
+	line-height: 1.5;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
 }
 
 body {
 	margin: 0;
-	display: flex;
-	place-items: center;
 	min-width: 320px;
 	min-height: 100vh;
 }
 
 #root {
 	width: 100%;
-	margin: 0 auto;
-	text-align: center;
-}
-
-@media (prefers-color-scheme: light) {
-	:root {
-		color: #213547;
-		background-color: #ffffff;
-	}
 }

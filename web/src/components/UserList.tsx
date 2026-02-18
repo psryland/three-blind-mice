@@ -9,7 +9,14 @@ interface UserListProps {
 export default function UserList({ users, current_user_id }: UserListProps) {
 	return (
 		<div className="user-list">
-			<h3>Users ({users.length})</h3>
+			<div className="user-list-header">
+				<h3>Online Users</h3>
+				<span className="user-list-count">{users.length}</span>
+				<span className="user-list-live">
+					<span className="user-list-live-dot" />
+					Live
+				</span>
+			</div>
 			<ul className="user-list-items">
 				{users.map((user) => {
 					const is_current = user.user_id === current_user_id;
