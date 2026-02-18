@@ -1,4 +1,4 @@
-// Room and user types for Three Blind Mice
+// Session and user types for Three Blind Mice
 
 export interface User {
 	user_id: string;
@@ -6,8 +6,8 @@ export interface User {
 	colour: string;
 }
 
-export interface RoomState {
-	room_code: string;
+export interface SessionState {
+	session_code: string;
 	is_host: boolean;
 	users: User[];
 	connected: boolean;
@@ -20,7 +20,7 @@ export const CURSOR_COLOURS = [
 	'#BB8FCE', '#85C1E9', '#F1948A', '#82E0AA',
 ];
 
-export function Generate_Room_Code(): string {
+export function Generate_Session_Code(): string {
 	const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
 	let code = '';
 	const array = new Uint8Array(6);

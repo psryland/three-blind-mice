@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import RoomPanel from './components/RoomPanel';
+import SessionPanel from './components/SessionPanel';
 import MouseCanvas from './components/MouseCanvas';
 import UserList from './components/UserList';
 import ConstrainPanel from './components/ConstrainPanel';
@@ -22,7 +22,7 @@ function Generate_User_Id(): string {
 }
 
 function App() {
-	const [room_code, set_room_code] = useState<string | null>(null);
+	const [session_code, set_session_code] = useState<string | null>(null);
 	const [is_host, set_is_host] = useState(false);
 	const [connected, set_connected] = useState(false);
 	const [users, set_users] = useState<User[]>([]);
@@ -72,7 +72,7 @@ function App() {
 	}, []);
 
 	const handle_join = useCallback((code: string, host: boolean) => {
-		set_room_code(code);
+		set_session_code(code);
 		set_is_host(host);
 		set_users([{ user_id, name: user_name || 'Anonymous', colour: user_colour }]);
 		set_aspect_ratio(16 / 9);
@@ -88,7 +88,7 @@ function App() {
 	const handle_leave = useCallback(() => {
 		client_ref.current?.disconnect();
 		client_ref.current = null;
-		set_room_code(null);
+		set_session_code(null);
 		set_is_host(false);
 		set_connected(false);
 		set_users([]);
@@ -105,7 +105,7 @@ function App() {
 		};
 	}, []);
 
-	const show_canvas = room_code !== null && !is_host && connected;
+	const show_canvas = session_code !== null && !is_host && connected;
 
 	return (
 		<div className="app">
@@ -126,7 +126,7 @@ function App() {
 								value={user_name}
 								onChange={(e) => set_user_name(e.target.value)}
 								maxLength={32}
-								disabled={room_code !== null}
+								disabled={session_code !== null}
 							/>
 						</div>
 
@@ -141,16 +141,16 @@ function App() {
 							/>
 						)}
 
-						{room_code && !connected && (
+						{session_code && !connected && (
 							<div className="canvas-placeholder">
-								<p>Connecting to room <strong>{room_code}</strong>…</p>
+								<p>Connecting to session <strong>{session_code}</strong>…</p>
 							</div>
 						)}
 
-						{room_code && is_host && connected && (
+						{session_code && is_host && connected && (
 							<div className="canvas-placeholder">
 								<p>
-									Hosting room <strong>{room_code}</strong>
+									Hosting session <strong>{session_code}</strong>
 								</p>
 								<p className="placeholder-hint">Run the desktop overlay to receive mouse input</p>
 							</div>
@@ -158,17 +158,17 @@ function App() {
 					</div>
 
 					<div className="app-right">
-						<RoomPanel
+						<SessionPanel
 							on_join={handle_join}
 							on_leave={handle_leave}
-							room_code={room_code}
+							session_code={session_code}
 						/>
 
-						{room_code && (
+						{session_code && (
 							<UserList users={users} current_user_id={user_id} />
 						)}
 
-						<DownloadPanel room_code={room_code} is_host={is_host} />
+						<DownloadPanel session_code={session_code} is_host={is_host} />
 					</div>
 				</div>
 			</div>

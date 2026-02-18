@@ -13,9 +13,9 @@ internal sealed class TrayIcon
 		Console.WriteLine("[Tray] Three Blind Mice is running.");
 	}
 
-	public void Update_Room(string code)
+	public void Update_Session(string code)
 	{
-		Console.WriteLine($"[Tray] Connected to room: {code}");
+		Console.WriteLine($"[Tray] Connected to session: {code}");
 	}
 
 	public void Shutdown()

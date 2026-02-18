@@ -1,28 +1,28 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Generate_Room_Code } from '../types';
-import './RoomPanel.css';
+import { Generate_Session_Code } from '../types';
+import './SessionPanel.css';
 
-interface RoomPanelProps {
+interface SessionPanelProps {
 	on_join: (code: string, is_host: boolean) => void;
 	on_leave: () => void;
-	room_code: string | null;
+	session_code: string | null;
 }
 
-export default function RoomPanel({ on_join, on_leave, room_code }: RoomPanelProps) {
+export default function SessionPanel({ on_join, on_leave, session_code }: SessionPanelProps) {
 	const [join_input, set_join_input] = useState('');
 	const [copy_label, set_copy_label] = useState('Copy Link');
 
-	// Auto-join from ?room= query parameter on mount
+	// Auto-join from ?session= query parameter on mount
 	useEffect(() => {
 		const params = new URLSearchParams(window.location.search);
-		const room_param = params.get('room');
-		if (room_param && !room_code) {
-			on_join(room_param.toLowerCase(), false);
+		const session_param = params.get('session');
+		if (session_param && !session_code) {
+			on_join(session_param.toLowerCase(), false);
 		}
 	}, []); // eslint-disable-line react-hooks/exhaustive-deps
 
 	const handle_create = useCallback(() => {
-		const code = Generate_Room_Code();
+		const code = Generate_Session_Code();
 		on_join(code, true);
 	}, [on_join]);
 
@@ -34,7 +34,7 @@ export default function RoomPanel({ on_join, on_leave, room_code }: RoomPanelPro
 		}
 	}, [join_input, on_join]);
 
-	const shareable_url = `https://three-blind-mice.rylogic.co.nz?room=${room_code}`;
+	const shareable_url = `https://three-blind-mice.rylogic.co.nz?session=${session_code}`;
 
 	const handle_copy_link = useCallback(async () => {
 		try {
@@ -47,17 +47,17 @@ export default function RoomPanel({ on_join, on_leave, room_code }: RoomPanelPro
 		}
 	}, [shareable_url]);
 
-	// Active room view
-	if (room_code) {
+	// Active session view
+	if (session_code) {
 		return (
-			<div className="room-panel">
-				<div className="room-active">
-					<h2>Room: <span className="room-code">{room_code}</span></h2>
+			<div className="session-panel">
+				<div className="session-active">
+					<h2>Session: <span className="session-code">{session_code}</span></h2>
 					<div className="shareable-url">
 						<input type="text" readOnly value={shareable_url} />
 						<button className="btn-primary" onClick={handle_copy_link}>{copy_label}</button>
 					</div>
-					<button className="leave-btn" onClick={on_leave}>Leave Room</button>
+					<button className="leave-btn" onClick={on_leave}>Leave Session</button>
 				</div>
 			</div>
 		);
@@ -65,20 +65,20 @@ export default function RoomPanel({ on_join, on_leave, room_code }: RoomPanelPro
 
 	// Lobby view
 	return (
-		<div className="room-panel">
-			<div className="room-section">
-				<h3>Create Room</h3>
-				<button className="btn-primary" onClick={handle_create}>Create New Room</button>
+		<div className="session-panel">
+			<div className="session-section">
+				<h3>Start Session</h3>
+				<button className="btn-primary" onClick={handle_create}>Start New Session</button>
 			</div>
 
-			<div className="room-divider">or</div>
+			<div className="session-divider">or</div>
 
-			<div className="room-section">
-				<h3>Join Room</h3>
+			<div className="session-section">
+				<h3>Join Session</h3>
 				<div className="join-controls">
 					<input
 						type="text"
-						placeholder="Enter room code"
+						placeholder="Enter session code"
 						value={join_input}
 						onChange={(e) => set_join_input(e.target.value)}
 						onKeyDown={(e) => e.key === 'Enter' && handle_join()}

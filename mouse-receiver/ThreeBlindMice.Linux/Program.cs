@@ -10,16 +10,16 @@ class Program
 	{
 		Console.WriteLine("Three Blind Mice — Linux Mouse Receiver");
 
-		var room_code = ParseRoomCode(args);
-		if (room_code is null)
+		var session_code = ParseSessionCode(args);
+		if (session_code is null)
 		{
-			Console.Error.WriteLine("Usage: ThreeBlindMice.Linux tbm://room/<code>");
-			Console.Error.WriteLine("       ThreeBlindMice.Linux --room <code>");
-			Console.Error.WriteLine("Room code must be 4-8 alphanumeric characters.");
+			Console.Error.WriteLine("Usage: ThreeBlindMice.Linux tbm://session/<code>");
+			Console.Error.WriteLine("       ThreeBlindMice.Linux --session <code>");
+			Console.Error.WriteLine("Session code must be 4-8 alphanumeric characters.");
 			return 1;
 		}
 
-		Console.WriteLine($"Joining room: {room_code}");
+		Console.WriteLine($"Joining session: {session_code}");
 
 		// Overlay requires a running X11 display — guard at runtime
 		if (!OperatingSystem.IsLinux())
@@ -55,7 +55,7 @@ class Program
 		pubsub.On_Connected += () =>
 		{
 			Console.WriteLine("Connected to Web PubSub.");
-			tray.Update_Room(room_code);
+			tray.Update_Session(session_code);
 		};
 
 		pubsub.On_Disconnected += () =>
@@ -73,7 +73,7 @@ class Program
 		{
 			try
 			{
-				await pubsub.Connect(NegotiateUrl, room_code, user_id);
+				await pubsub.Connect(NegotiateUrl, session_code, user_id);
 			}
 			catch (Exception ex)
 			{
@@ -107,23 +107,23 @@ class Program
 	}
 
 	/// <summary>
-	/// Extract room code from either tbm://room/XXXX URI or --room XXXX args.
+	/// Extract session code from either tbm://session/XXXX URI or --session XXXX args.
 	/// Uses the shared TbmUriParser from Core for validation.
 	/// </summary>
-	private static string? ParseRoomCode(string[] args)
+	private static string? ParseSessionCode(string[] args)
 	{
 		if (args.Length == 0)
 			return null;
 
 		// Try tbm:// URI first (e.g. launched via protocol handler)
 		if (args[0].StartsWith("tbm://", StringComparison.OrdinalIgnoreCase))
-			return TbmUriParser.TryParseRoomCode(args[0]);
+			return TbmUriParser.TryParseSessionCode(args[0]);
 
-		// Try --room <code>
-		if (args.Length >= 2 && args[0] == "--room")
+		// Try --session <code>
+		if (args.Length >= 2 && args[0] == "--session")
 		{
 			var code = args[1];
-			return TbmUriParser.IsValidRoomCode(code) ? code : null;
+			return TbmUriParser.IsValidSessionCode(code) ? code : null;
 		}
 
 		return null;

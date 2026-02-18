@@ -62,7 +62,7 @@ const INITIAL_BACKOFF_MS = 1_000;
 export class PubSubClient {
 	private m_negotiate_url: string;
 	private m_ws: WebSocket | null = null;
-	private m_room: string = '';
+	private m_session_code: string = '';
 	private m_user_id: string = '';
 	private m_name: string = '';
 	private m_colour: string = '';
@@ -82,11 +82,11 @@ export class PubSubClient {
 	}
 
 	/**
-	 * Connect to a room via Azure Web PubSub.
+	 * Connect to a session via Azure Web PubSub.
 	 * Calls the negotiate endpoint to obtain a WebSocket URL, then opens the connection.
 	 */
-	async connect(room: string, user_id: string, name: string, colour: string): Promise<void> {
-		this.m_room = room;
+	async connect(session_code: string, user_id: string, name: string, colour: string): Promise<void> {
+		this.m_session_code = session_code;
 		this.m_user_id = user_id;
 		this.m_name = name;
 		this.m_colour = colour;
@@ -97,7 +97,7 @@ export class PubSubClient {
 	}
 
 	/**
-	 * Disconnect from the room gracefully.
+	 * Disconnect from the session gracefully.
 	 */
 	disconnect(): void {
 		this.m_should_reconnect = false;
@@ -119,7 +119,7 @@ export class PubSubClient {
 	}
 
 	/**
-	 * Send a cursor position update to the room group, throttled to ~20fps.
+	 * Send a cursor position update to the session group, throttled to ~20fps.
 	 */
 	send_cursor(x: number, y: number, button: number): void {
 		const msg: CursorMessage = {
@@ -177,10 +177,10 @@ export class PubSubClient {
 			this.m_reconnect_delay = INITIAL_BACKOFF_MS;
 			this.Set_Connected(true);
 
-			// Join the room group
+			// Join the session group
 			const join_group: JoinGroupEnvelope = {
 				type: 'joinGroup',
-				group: this.m_room,
+				group: this.m_session_code,
 			};
 			this.m_ws!.send(JSON.stringify(join_group));
 
@@ -212,7 +212,7 @@ export class PubSubClient {
 	private async Negotiate(): Promise<string | null> {
 		try {
 			const params = new URLSearchParams({
-				room: this.m_room,
+				session: this.m_session_code,
 				user: this.m_user_id,
 			});
 			const response = await fetch(`${this.m_negotiate_url}?${params}`, {
@@ -235,7 +235,7 @@ export class PubSubClient {
 
 		const envelope: SendToGroupEnvelope = {
 			type: 'sendToGroup',
-			group: this.m_room,
+			group: this.m_session_code,
 			dataType: 'json',
 			data,
 		};

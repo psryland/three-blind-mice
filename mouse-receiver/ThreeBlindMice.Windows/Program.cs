@@ -8,18 +8,18 @@ class Program
 	{
 		Console.WriteLine("Three Blind Mice — Windows Mouse Receiver");
 
-		// Parse room code from args: either a tbm:// URI or --room <code>
-		var room_code = ParseRoomCode(args);
-		if (room_code == null)
+		// Parse session code from args: either a tbm:// URI or --session <code>
+		var session_code = ParseSessionCode(args);
+		if (session_code == null)
 		{
 			Console.Error.WriteLine("Usage:");
-			Console.Error.WriteLine("  ThreeBlindMice.Windows tbm://room/<code>");
-			Console.Error.WriteLine("  ThreeBlindMice.Windows --room <code> [--monitor N]");
+			Console.Error.WriteLine("  ThreeBlindMice.Windows tbm://session/<code>");
+			Console.Error.WriteLine("  ThreeBlindMice.Windows --session <code> [--monitor N]");
 			Environment.Exit(1);
 			return;
 		}
 
-		Console.WriteLine($"Room code: {room_code}");
+		Console.WriteLine($"Session code: {session_code}");
 
 		// Register the tbm:// protocol handler if not already done
 		if (!ProtocolRegistrar.Is_Registered())
@@ -94,7 +94,7 @@ class Program
 		// Connect to Web PubSub
 		const string negotiate_url = "https://mango-beach-0f96e6000.1.azurestaticapps.net/api/negotiate";
 		var host_id = $"host-{Guid.NewGuid():N}";
-		await pubsub.Connect(negotiate_url, room_code, host_id);
+		await pubsub.Connect(negotiate_url, session_code, host_id);
 
 		// Create system tray icon
 		using var tray = new TrayIcon(() =>
@@ -102,7 +102,7 @@ class Program
 			overlay.Shutdown();
 			exit.Set();
 		});
-		tray.Show(room_code);
+		tray.Show(session_code);
 
 		// Handle Ctrl+C for clean shutdown
 		Console.CancelKeyPress += (_, e) =>
@@ -119,22 +119,22 @@ class Program
 		Console.WriteLine("Exiting.");
 	}
 
-	private static string? ParseRoomCode(string[] args)
+	private static string? ParseSessionCode(string[] args)
 	{
 		if (args.Length == 0)
 			return null;
 
 		// Try tbm:// URI first (e.g. launched via protocol handler)
 		if (args[0].StartsWith("tbm://", StringComparison.OrdinalIgnoreCase))
-			return TbmUriParser.TryParseRoomCode(args[0]);
+			return TbmUriParser.TryParseSessionCode(args[0]);
 
-		// Try --room <code>
+		// Try --session <code>
 		for (var i = 0; i < args.Length - 1; i++)
 		{
-			if (args[i] == "--room")
+			if (args[i] == "--session")
 			{
 				var code = args[i + 1];
-				return TbmUriParser.IsValidRoomCode(code) ? code : null;
+				return TbmUriParser.IsValidSessionCode(code) ? code : null;
 			}
 		}
 

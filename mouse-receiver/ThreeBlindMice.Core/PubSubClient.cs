@@ -15,7 +15,7 @@ public class PubSubClient : IDisposable
 	private CancellationTokenSource? m_cts;
 	private Task? m_receive_task;
 	private string m_negotiate_url = "";
-	private string m_room = "";
+	private string m_session_code = "";
 	private string m_user_id = "";
 	private bool m_disposed;
 
@@ -35,10 +35,10 @@ public class PubSubClient : IDisposable
 
 	public bool Is_Connected => m_ws?.State == WebSocketState.Open;
 
-	public async Task Connect(string negotiate_url, string room, string user_id)
+	public async Task Connect(string negotiate_url, string session_code, string user_id)
 	{
 		m_negotiate_url = negotiate_url;
-		m_room = room;
+		m_session_code = session_code;
 		m_user_id = user_id;
 		m_cts = new CancellationTokenSource();
 
@@ -94,8 +94,8 @@ public class PubSubClient : IDisposable
 		await m_ws.ConnectAsync(new Uri(ws_url), ct);
 		On_Connected?.Invoke();
 
-		// Join the room group
-		await Join_Group(m_room, ct);
+		// Join the session group
+		await Join_Group(m_session_code, ct);
 
 		// Start the receive loop in the background
 		m_receive_task = Task.Run(() => Receive_Loop(ct), ct);
@@ -106,7 +106,7 @@ public class PubSubClient : IDisposable
 		try
 		{
 			using var http = new HttpClient();
-			var url = $"{m_negotiate_url}?room={Uri.EscapeDataString(m_room)}&user={Uri.EscapeDataString(m_user_id)}";
+			var url = $"{m_negotiate_url}?session={Uri.EscapeDataString(m_session_code)}&user={Uri.EscapeDataString(m_user_id)}";
 			var response = await http.GetAsync(url, ct);
 			response.EnsureSuccessStatusCode();
 

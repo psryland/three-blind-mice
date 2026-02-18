@@ -31,11 +31,11 @@ function Detect_Platform(): string {
 }
 
 interface Props {
-	room_code: string | null;
+	session_code: string | null;
 	is_host: boolean;
 }
 
-export default function DownloadPanel({ room_code, is_host }: Props) {
+export default function DownloadPanel({ session_code, is_host }: Props) {
 	const [detected_platform] = useState(Detect_Platform);
 	const [show_all, set_show_all] = useState(false);
 	const [launch_attempted, set_launch_attempted] = useState(false);
@@ -43,17 +43,17 @@ export default function DownloadPanel({ room_code, is_host }: Props) {
 	const primary = DOWNLOADS.find((d) => d.platform === detected_platform) ?? DOWNLOADS[0];
 	const others = DOWNLOADS.filter((d) => d.platform !== detected_platform);
 
-	// Reset launch state when room changes
+	// Reset launch state when session changes
 	useEffect(() => {
 		set_launch_attempted(false);
-	}, [room_code]);
+	}, [session_code]);
 
 	const handle_launch = () => {
-		if (!room_code) return;
+		if (!session_code) return;
 		set_launch_attempted(true);
 
 		// Attempt to launch via tbm:// protocol
-		window.location.href = `tbm://room/${room_code}`;
+		window.location.href = `tbm://session/${session_code}`;
 	};
 
 	return (
@@ -91,7 +91,7 @@ export default function DownloadPanel({ room_code, is_host }: Props) {
 				))}
 			</div>
 
-			{room_code && is_host && (
+			{session_code && is_host && (
 				<div className="launch-section">
 					<button className="launch-btn" onClick={handle_launch}>
 						🚀 Launch Overlay

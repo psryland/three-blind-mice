@@ -1,6 +1,6 @@
 const { WebPubSubServiceClient } = require("@azure/web-pubsub");
 
-const ROOM_CODE_REGEX = /^[a-zA-Z0-9]{4,8}$/;
+const SESSION_CODE_REGEX = /^[a-zA-Z0-9]{4,8}$/;
 const USER_ID_REGEX = /^[a-zA-Z0-9_-]{1,50}$/;
 
 module.exports = async function (context, req) {
@@ -15,14 +15,14 @@ module.exports = async function (context, req) {
 	}
 
 	try {
-		const room = req.query.room || "default";
+		const session = req.query.session || "default";
 		const user = req.query.user || "anon";
 
-		// Validate room code
-		if (!ROOM_CODE_REGEX.test(room)) {
+		// Validate session code
+		if (!SESSION_CODE_REGEX.test(session)) {
 			context.res = {
 				status: 400,
-				body: { error: "Invalid room code. Must be 4-8 alphanumeric characters." }
+				body: { error: "Invalid session code. Must be 4-8 alphanumeric characters." }
 			};
 			return;
 		}
@@ -41,8 +41,8 @@ module.exports = async function (context, req) {
 		const token = await client.getClientAccessToken({
 			userId: user,
 			roles: [
-				`webpubsub.joinLeaveGroup.${room}`,
-				`webpubsub.sendToGroup.${room}`
+				`webpubsub.joinLeaveGroup.${session}`,
+				`webpubsub.sendToGroup.${session}`
 			]
 		});
 

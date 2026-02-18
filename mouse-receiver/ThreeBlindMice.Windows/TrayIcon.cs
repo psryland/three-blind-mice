@@ -27,14 +27,14 @@ internal sealed class TrayIcon : IDisposable
 	private const uint TPM_LEFTALIGN = 0x0000;
 
 	private const int IDM_QUIT = 1001;
-	private const int IDM_ROOM = 1002;
+	private const int IDM_SESSION = 1002;
 	private const uint IDI_APPLICATION = 32512;
 
 	private IntPtr m_hwnd;
 	private IntPtr m_icon;
 	private Thread? m_thread;
 	private volatile bool m_disposed;
-	private string m_room_code = "";
+	private string m_session_code = "";
 	private readonly Action m_on_quit;
 	private readonly WndProcDelegate m_wnd_proc_delegate;
 
@@ -49,9 +49,9 @@ internal sealed class TrayIcon : IDisposable
 	/// <summary>
 	/// Creates the tray icon on a dedicated STA thread.
 	/// </summary>
-	public void Show(string room_code)
+	public void Show(string session_code)
 	{
-		m_room_code = room_code;
+		m_session_code = session_code;
 		var ready = new ManualResetEventSlim(false);
 
 		m_thread = new Thread(() =>
@@ -71,17 +71,17 @@ internal sealed class TrayIcon : IDisposable
 	}
 
 	/// <summary>
-	/// Updates the tooltip to reflect a new room code.
+	/// Updates the tooltip to reflect a new session code.
 	/// </summary>
-	public void Update_Room(string code)
+	public void Update_Session(string code)
 	{
-		m_room_code = code;
+		m_session_code = code;
 		if (m_hwnd == IntPtr.Zero)
 			return;
 
 		var nid = MakeNotifyIconData();
 		nid.uFlags = NIF_TIP;
-		nid.szTip = $"Three Blind Mice - Room: {code}";
+		nid.szTip = $"Three Blind Mice - Session: {code}";
 		Shell_NotifyIcon(NIM_MODIFY, ref nid);
 	}
 
@@ -134,7 +134,7 @@ internal sealed class TrayIcon : IDisposable
 		nid.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
 		nid.uCallbackMessage = WM_APP_TRAY;
 		nid.hIcon = m_icon;
-		nid.szTip = $"Three Blind Mice - Room: {m_room_code}";
+		nid.szTip = $"Three Blind Mice - Session: {m_session_code}";
 		Shell_NotifyIcon(NIM_ADD, ref nid);
 	}
 
@@ -151,7 +151,7 @@ internal sealed class TrayIcon : IDisposable
 	private void ShowContextMenu()
 	{
 		var menu = CreatePopupMenu();
-		InsertMenu(menu, 0, MF_STRING | MF_GRAYED, (IntPtr)IDM_ROOM, $"Room: {m_room_code}");
+		InsertMenu(menu, 0, MF_STRING | MF_GRAYED, (IntPtr)IDM_SESSION, $"Session: {m_session_code}");
 		InsertMenu(menu, 1, MF_SEPARATOR, IntPtr.Zero, null);
 		InsertMenu(menu, 2, MF_STRING, (IntPtr)IDM_QUIT, "Quit");
 

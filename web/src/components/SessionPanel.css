@@ -33,15 +33,15 @@ button:disabled {
 	box-shadow: 0 2px 6px rgba(59, 111, 212, 0.3);
 }
 
-/* Room panel container */
-.room-panel {
+/* Session panel container */
+.session-panel {
 	display: flex;
 	flex-direction: column;
 	gap: 1rem;
 }
 
 /* Card style for each section */
-.room-section {
+.session-section {
 	background: var(--color-card-bg);
 	border: 1px solid var(--color-card-border);
 	border-radius: var(--radius);
@@ -49,7 +49,7 @@ button:disabled {
 	box-shadow: var(--shadow-sm);
 }
 
-.room-section h3 {
+.session-section h3 {
 	margin: 0 0 0.75rem;
 	font-size: 0.95rem;
 	font-weight: 600;
@@ -57,7 +57,7 @@ button:disabled {
 }
 
 /* "or" divider between cards */
-.room-divider {
+.session-divider {
 	text-align: center;
 	color: var(--color-text-muted);
 	font-size: 0.8rem;
@@ -66,8 +66,8 @@ button:disabled {
 	margin: 0.25rem 0;
 }
 
-.room-divider::before,
-.room-divider::after {
+.session-divider::before,
+.session-divider::after {
 	content: '';
 	position: absolute;
 	top: 50%;
@@ -76,11 +76,11 @@ button:disabled {
 	background: var(--color-card-border);
 }
 
-.room-divider::before {
+.session-divider::before {
 	left: 0;
 }
 
-.room-divider::after {
+.session-divider::after {
 	right: 0;
 }
 
@@ -105,13 +105,13 @@ button:disabled {
 	box-shadow: 0 0 0 3px var(--color-primary-light);
 }
 
-/* Create room button full width */
-.room-section .btn-primary {
+/* Start session button full width */
+.session-section .btn-primary {
 	width: 100%;
 }
 
-/* Active room card */
-.room-active {
+/* Active session card */
+.session-active {
 	background: var(--color-card-bg);
 	border: 1px solid var(--color-card-border);
 	border-radius: var(--radius);
@@ -120,14 +120,14 @@ button:disabled {
 	box-shadow: var(--shadow-sm);
 }
 
-.room-active h2 {
+.session-active h2 {
 	margin: 0 0 0.75rem;
 	font-size: 1rem;
 	font-weight: 600;
 	color: var(--color-text);
 }
 
-.room-code {
+.session-code {
 	font-family: "Cascadia Code", "Fira Code", "Consolas", monospace;
 	font-size: 1.6em;
 	letter-spacing: 0.14em;
