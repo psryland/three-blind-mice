@@ -1,0 +1,142 @@
+.download-panel {
+	background: var(--card-bg);
+	border-radius: 12px;
+	padding: 1.25rem;
+}
+
+.download-panel h3 {
+	margin: 0 0 0.5rem 0;
+	font-size: 1rem;
+	color: var(--text-primary);
+}
+
+.download-description {
+	margin: 0 0 1rem 0;
+	font-size: 0.85rem;
+	color: var(--text-secondary);
+	line-height: 1.4;
+}
+
+.download-description a {
+	color: var(--accent);
+}
+
+.download-buttons {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	margin-bottom: 1rem;
+}
+
+.download-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.5rem;
+	padding: 0.6rem 1rem;
+	border-radius: 8px;
+	border: none;
+	font-size: 0.9rem;
+	font-weight: 600;
+	cursor: pointer;
+	text-decoration: none;
+	text-align: center;
+	transition: background 0.2s, transform 0.1s;
+}
+
+.download-btn:active {
+	transform: scale(0.98);
+}
+
+.download-btn.primary {
+	background: var(--accent);
+	color: #fff;
+}
+
+.download-btn.primary:hover {
+	background: var(--accent-hover);
+}
+
+.download-btn.secondary {
+	background: rgba(255, 255, 255, 0.08);
+	color: var(--text-secondary);
+	border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.download-btn.secondary:hover {
+	background: rgba(255, 255, 255, 0.12);
+	color: var(--text-primary);
+}
+
+.launch-section {
+	margin: 1rem 0;
+	padding-top: 1rem;
+	border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.launch-btn {
+	width: 100%;
+	padding: 0.75rem 1rem;
+	border-radius: 8px;
+	border: 2px solid var(--accent);
+	background: transparent;
+	color: var(--accent);
+	font-size: 0.95rem;
+	font-weight: 600;
+	cursor: pointer;
+	transition: background 0.2s, color 0.2s;
+}
+
+.launch-btn:hover {
+	background: var(--accent);
+	color: #fff;
+}
+
+.launch-hint {
+	margin: 0.5rem 0 0 0;
+	font-size: 0.8rem;
+	color: var(--text-muted);
+	line-height: 1.4;
+}
+
+.launch-hint code {
+	background: rgba(255, 255, 255, 0.08);
+	padding: 0.1rem 0.3rem;
+	border-radius: 3px;
+	font-size: 0.75rem;
+}
+
+.hash-details {
+	margin-top: 0.75rem;
+}
+
+.hash-details summary {
+	font-size: 0.8rem;
+	color: var(--text-muted);
+	cursor: pointer;
+}
+
+.hash-details summary:hover {
+	color: var(--text-secondary);
+}
+
+.hash-entry {
+	margin-top: 0.5rem;
+}
+
+.hash-label {
+	display: block;
+	font-size: 0.75rem;
+	color: var(--text-secondary);
+	margin-bottom: 0.2rem;
+}
+
+.hash-value {
+	display: block;
+	font-size: 0.65rem;
+	color: var(--text-muted);
+	word-break: break-all;
+	background: rgba(0, 0, 0, 0.2);
+	padding: 0.3rem 0.5rem;
+	border-radius: 4px;
+}

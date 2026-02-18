@@ -3,6 +3,7 @@ import RoomPanel from './components/RoomPanel';
 import MouseCanvas from './components/MouseCanvas';
 import UserList from './components/UserList';
 import ConstrainPanel from './components/ConstrainPanel';
+import DownloadPanel from './components/DownloadPanel';
 import { PubSubClient, PubSubMessage } from './services/pubsub';
 import { User, CURSOR_COLOURS } from './types';
 import './App.css';
@@ -166,6 +167,8 @@ function App() {
 						{room_code && (
 							<UserList users={users} current_user_id={user_id} />
 						)}
+
+						<DownloadPanel room_code={room_code} is_host={is_host} />
 					</div>
 				</div>
 			</div>
