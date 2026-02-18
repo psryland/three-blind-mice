@@ -1,28 +1,23 @@
-/* Screen preview wrapper */
+/* Screen preview wrapper — minimal chrome so canvas fills the space */
 .mouse-canvas-wrapper {
 	position: relative;
 	width: 100%;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	background: var(--color-card-bg);
-	border: 1px solid var(--color-card-border);
-	border-radius: var(--radius);
-	padding: 0.75rem;
+	background: #111827;
+	border-radius: 6px;
+	padding: 0.25rem;
 	flex: 1;
 	min-height: 0;
-	box-shadow: var(--shadow-sm);
 }
 
 /* The canvas itself — dark "screen" look */
 .mouse-canvas {
 	position: relative;
 	background: linear-gradient(145deg, #1a1a2e, #16213e);
-	border: 2px solid #2a2a4a;
-	border-radius: 8px;
-	box-shadow:
-		0 4px 16px rgba(0, 0, 0, 0.2),
-		inset 0 1px 0 rgba(255, 255, 255, 0.04);
+	border: 1px solid #2a2a4a;
+	border-radius: 4px;
 	overflow: hidden;
 	cursor: crosshair;
 	user-select: none;
@@ -31,20 +26,19 @@
 .mouse-canvas.locked {
 	cursor: none;
 	border-color: var(--color-primary);
-	box-shadow:
-		0 4px 16px rgba(0, 0, 0, 0.2),
-		0 0 0 2px rgba(74, 144, 217, 0.3);
+	box-shadow: 0 0 0 2px rgba(74, 144, 217, 0.3);
 }
 
-/* Subtle grid overlay */
+/* Grid overlay — line opacity and spacing respond to zoom */
 .mouse-canvas-grid {
 	position: absolute;
 	inset: 0;
 	pointer-events: none;
 	background-image:
-		linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-		linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+		linear-gradient(to right, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+		linear-gradient(to bottom, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
 	background-size: 10% 10%;
+	transition: background-size 0.15s ease-out;
 }
 
 .mouse-canvas-instruction {
@@ -54,9 +48,26 @@
 	align-items: center;
 	justify-content: center;
 	pointer-events: none;
-	color: rgba(255, 255, 255, 0.4);
-	font-size: 1rem;
+	color: rgba(255, 255, 255, 0.35);
+	font-size: 0.9rem;
 	font-style: italic;
+}
+
+/* Zoom level badge — shown when zoomed in */
+.mouse-canvas-zoom-badge {
+	position: absolute;
+	bottom: 10px;
+	right: 10px;
+	padding: 4px 10px;
+	background: rgba(0, 0, 0, 0.55);
+	color: rgba(255, 255, 255, 0.9);
+	font-size: 0.8rem;
+	font-weight: 600;
+	font-family: "Cascadia Code", "Fira Code", "Consolas", monospace;
+	border-radius: 4px;
+	pointer-events: none;
+	backdrop-filter: blur(4px);
+	z-index: 5;
 }
 
 /* Cursor dot */

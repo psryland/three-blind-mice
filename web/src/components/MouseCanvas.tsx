@@ -9,6 +9,10 @@ interface MouseCanvasProps {
 	user_colour: string;
 }
 
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 8;
+const ZOOM_STEP = 1.2; // multiplicative step per wheel notch
+
 export default function MouseCanvas({
 	aspect_ratio = 16 / 9,
 	on_cursor_move,
@@ -20,9 +24,11 @@ export default function MouseCanvas({
 	const [cursor_x, set_cursor_x] = useState(0.5);
 	const [cursor_y, set_cursor_y] = useState(0.5);
 	const [button_state, set_button_state] = useState(0);
+	const [zoom_level, set_zoom_level] = useState(1);
 
 	// Track accumulated movement while pointer-locked
 	const accum_ref = useRef({ x: 0.5, y: 0.5 });
+	const zoom_ref = useRef(1); // mirror for use in non-stale callbacks
 
 	// Resize the canvas div to fill parent while maintaining aspect ratio
 	const [canvas_size, set_canvas_size] = useState({ width: 640, height: 360 });
@@ -57,8 +63,10 @@ export default function MouseCanvas({
 			const locked = document.pointerLockElement === canvas_ref.current;
 			set_is_locked(locked);
 			if (!locked) {
-				// Reset button state when unlocking
 				set_button_state(0);
+				// Reset zoom when unlocking
+				set_zoom_level(1);
+				zoom_ref.current = 1;
 			}
 		};
 
@@ -66,19 +74,39 @@ export default function MouseCanvas({
 		return () => document.removeEventListener('pointerlockchange', on_lock_change);
 	}, []);
 
-	// Handle mouse move — works in both locked and unlocked modes
+	// Mouse wheel → zoom (only while pointer-locked)
+	useEffect(() => {
+		const el = canvas_ref.current;
+		if (!el) return;
+
+		const handle_wheel = (e: WheelEvent) => {
+			e.preventDefault();
+			const direction = e.deltaY < 0 ? 1 : -1; // scroll up = zoom in
+			const new_zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM,
+				zoom_ref.current * (direction > 0 ? ZOOM_STEP : 1 / ZOOM_STEP)));
+			// Snap to 1.0 when close
+			const snapped = Math.abs(new_zoom - 1) < 0.05 ? 1 : new_zoom;
+			zoom_ref.current = snapped;
+			set_zoom_level(snapped);
+		};
+
+		el.addEventListener('wheel', handle_wheel, { passive: false });
+		return () => el.removeEventListener('wheel', handle_wheel);
+	}, []);
+
+	// Handle mouse move — zoom divides sensitivity for finer control
 	const handle_mouse_move = useCallback((e: React.MouseEvent) => {
 		const el = canvas_ref.current;
 		if (!el) return;
 
 		let nx: number;
 		let ny: number;
+		const z = zoom_ref.current;
 
 		if (is_locked) {
-			// In pointer lock, use movementX/Y accumulated on normalised coords
 			const acc = accum_ref.current;
-			acc.x = Math.max(0, Math.min(1, acc.x + e.movementX / canvas_size.width));
-			acc.y = Math.max(0, Math.min(1, acc.y + e.movementY / canvas_size.height));
+			acc.x = Math.max(0, Math.min(1, acc.x + e.movementX / (canvas_size.width * z)));
+			acc.y = Math.max(0, Math.min(1, acc.y + e.movementY / (canvas_size.height * z)));
 			nx = acc.x;
 			ny = acc.y;
 		} else {
@@ -113,8 +141,16 @@ export default function MouseCanvas({
 	}, [cursor_x, cursor_y, on_cursor_move]);
 
 	const instruction_text = is_locked
-		? 'Press Esc to release cursor'
+		? 'Press Esc to release · Scroll to zoom'
 		: 'Click to lock cursor';
+
+	// Grid cell size scales with zoom: at 1x = 10% cells, at 2x = 20% cells, etc.
+	const grid_pct = 10 * zoom_level;
+	const grid_style = {
+		backgroundSize: `${grid_pct}% ${grid_pct}%`,
+	};
+
+	const show_zoom_badge = zoom_level > 1.05;
 
 	return (
 		<div className="mouse-canvas-wrapper" ref={wrapper_ref}>
@@ -127,9 +163,16 @@ export default function MouseCanvas({
 				onMouseDown={handle_mouse_down}
 				onMouseUp={handle_mouse_up}
 			>
-				<div className="mouse-canvas-grid" />
+				<div className="mouse-canvas-grid" style={grid_style} />
 
 				<div className="mouse-canvas-instruction">{instruction_text}</div>
+
+				{/* Zoom indicator badge */}
+				{show_zoom_badge && (
+					<div className="mouse-canvas-zoom-badge">
+						🔍 {zoom_level.toFixed(1)}×
+					</div>
+				)}
 
 				{/* User's own cursor dot */}
 				<div
@@ -140,7 +183,6 @@ export default function MouseCanvas({
 						backgroundColor: user_colour,
 					}}
 				>
-					{/* Pulsing glow ring shown during laser mode */}
 					{button_state === 1 && (
 						<div
 							className="mouse-canvas-laser-glow"
