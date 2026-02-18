@@ -80,7 +80,7 @@ function Sign-Binary($exe_path, $cert_path, $cert_password) {
 
 function Publish-Platform($rid, $project, $out_dir) {
 	Write-Step "Publishing $project for $rid"
-	dotnet publish "$project" -c Release -r $rid --self-contained false /p:PublishSingleFile=true -o $out_dir
+	dotnet publish "$project" -c Release -r $rid --self-contained false -o $out_dir
 	if ($LASTEXITCODE -ne 0) {
 		throw "dotnet publish failed for $rid with exit code $LASTEXITCODE"
 	}
