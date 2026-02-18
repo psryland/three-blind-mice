@@ -1,80 +1,103 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Generate_Session_Code } from '../types';
 import './SessionPanel.css';
 
-interface SessionPanelProps {
-	on_join: (code: string, is_host: boolean) => void;
-	on_leave: () => void;
-	session_code: string | null;
+// Landing mode: shown when no session is active
+interface LandingProps {
+	mode: 'landing';
+	user_name: string;
+	on_name_change: (name: string) => void;
+	on_start_session: () => void;
+	on_join: (code: string) => void;
 }
 
-export default function SessionPanel({ on_join, on_leave, session_code }: SessionPanelProps) {
+// Active mode: shown when a session is in progress
+interface ActiveProps {
+	mode: 'active';
+	session_code: string;
+	on_leave: () => void;
+}
+
+type SessionPanelProps = LandingProps | ActiveProps;
+
+export default function SessionPanel(props: SessionPanelProps) {
 	const [join_input, set_join_input] = useState('');
 	const [copy_label, set_copy_label] = useState('Copy Link');
 
-	// Auto-join from ?session= query parameter on mount
+	// Auto-join from ?session= query parameter on mount (only in landing mode)
+	const on_join_ref = props.mode === 'landing' ? props.on_join : undefined;
 	useEffect(() => {
+		if (!on_join_ref) return;
 		const params = new URLSearchParams(window.location.search);
 		const session_param = params.get('session');
-		if (session_param && !session_code) {
-			on_join(session_param.toLowerCase(), false);
+		if (session_param) {
+			on_join_ref(session_param.toLowerCase());
 		}
 	}, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-	const handle_create = useCallback(() => {
-		const code = Generate_Session_Code();
-		on_join(code, true);
-	}, [on_join]);
-
 	const handle_join = useCallback(() => {
+		if (props.mode !== 'landing') return;
 		const code = join_input.trim().toLowerCase();
 		if (code.length >= 4) {
-			on_join(code, false);
+			props.on_join(code);
 			set_join_input('');
 		}
-	}, [join_input, on_join]);
-
-	const shareable_url = `https://three-blind-mice.rylogic.co.nz?session=${session_code}`;
-
-	const handle_copy_link = useCallback(async () => {
-		try {
-			await navigator.clipboard.writeText(shareable_url);
-			set_copy_label('Copied!');
-			setTimeout(() => set_copy_label('Copy Link'), 2000);
-		} catch {
-			set_copy_label('Failed');
-			setTimeout(() => set_copy_label('Copy Link'), 2000);
-		}
-	}, [shareable_url]);
+	}, [join_input, props]);
 
 	// Active session view
-	if (session_code) {
+	if (props.mode === 'active') {
+		const shareable_url = `https://three-blind-mice.rylogic.co.nz?session=${props.session_code}`;
+
+		const handle_copy_link = async () => {
+			try {
+				await navigator.clipboard.writeText(shareable_url);
+				set_copy_label('Copied!');
+				setTimeout(() => set_copy_label('Copy Link'), 2000);
+			} catch {
+				set_copy_label('Failed');
+				setTimeout(() => set_copy_label('Copy Link'), 2000);
+			}
+		};
+
 		return (
 			<div className="session-panel">
 				<div className="session-active">
-					<h2>Session: <span className="session-code">{session_code}</span></h2>
+					<h2>Session: <span className="session-code">{props.session_code}</span></h2>
 					<div className="shareable-url">
 						<input type="text" readOnly value={shareable_url} />
 						<button className="btn-primary" onClick={handle_copy_link}>{copy_label}</button>
 					</div>
-					<button className="leave-btn" onClick={on_leave}>Leave Session</button>
+					<button className="leave-btn" onClick={props.on_leave}>Leave Session</button>
 				</div>
 			</div>
 		);
 	}
 
-	// Lobby view
+	// Landing view
 	return (
 		<div className="session-panel">
 			<div className="session-section">
 				<h3>Start Session</h3>
-				<button className="btn-primary" onClick={handle_create}>Start New Session</button>
+				<p className="session-section-hint">Host a session and share your screen with remote users</p>
+				<button className="btn-primary" onClick={props.on_start_session}>Start Session</button>
 			</div>
 
 			<div className="session-divider">or</div>
 
 			<div className="session-section">
 				<h3>Join Session</h3>
+
+				<div className="name-input-inline">
+					<label htmlFor="user-name">Your Name</label>
+					<input
+						id="user-name"
+						type="text"
+						placeholder="Enter your name"
+						value={props.user_name}
+						onChange={(e) => props.on_name_change(e.target.value)}
+						maxLength={32}
+					/>
+				</div>
+
 				<div className="join-controls">
 					<input
 						type="text"

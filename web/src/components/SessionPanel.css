@@ -50,10 +50,17 @@ button:disabled {
 }
 
 .session-section h3 {
-	margin: 0 0 0.75rem;
+	margin: 0 0 0.4rem;
 	font-size: 0.95rem;
 	font-weight: 600;
 	color: var(--color-text);
+}
+
+.session-section-hint {
+	margin: 0 0 0.75rem;
+	font-size: 0.82rem;
+	color: var(--color-text-muted);
+	line-height: 1.4;
 }
 
 /* "or" divider between cards */
@@ -82,6 +89,38 @@ button:disabled {
 
 .session-divider::after {
 	right: 0;
+}
+
+/* Name input inside the Join Session card */
+.name-input-inline {
+	margin-bottom: 0.75rem;
+}
+
+.name-input-inline label {
+	display: block;
+	font-size: 0.75rem;
+	font-weight: 600;
+	color: var(--color-primary);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	margin-bottom: 0.4rem;
+}
+
+.name-input-inline input {
+	width: 100%;
+	padding: 0.55rem 0.8rem;
+	border: 1px solid var(--color-card-border);
+	border-radius: var(--radius-sm);
+	font-size: 0.95rem;
+	color: var(--color-text);
+	background: #fff;
+	transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.name-input-inline input:focus {
+	outline: none;
+	border-color: var(--color-primary);
+	box-shadow: 0 0 0 3px var(--color-primary-light);
 }
 
 /* Join controls */

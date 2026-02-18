@@ -1,161 +1,66 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
+import type { MonitorInfo, WindowInfo, HostConstraintMessage } from '../services/pubsub';
 import './ConstrainPanel.css';
 
-export interface ScreenInfo {
-	label: string;
-	left: number;
-	top: number;
-	width: number;
-	height: number;
-	is_primary: boolean;
-	thumbnail_url?: string;
-}
-
-/**
- * Uses the Window Management API (Chrome/Edge 100+) to enumerate monitors.
- * Falls back to window.screen for browsers that don't support it.
- */
-async function Detect_Screens(): Promise<ScreenInfo[]> {
-	if ('getScreenDetails' in window) {
-		try {
-			const details = await (window as any).getScreenDetails();
-			const screens: ScreenInfo[] = details.screens.map((s: any, i: number) => ({
-				label: s.label || `Display ${i + 1}`,
-				left: s.availLeft ?? s.left ?? 0,
-				top: s.availTop ?? s.top ?? 0,
-				width: s.availWidth ?? s.width ?? 1920,
-				height: s.availHeight ?? s.height ?? 1080,
-				is_primary: s.isPrimary ?? (i === 0),
-			}));
-			if (screens.length > 0) return screens;
-		} catch {
-			// Permission denied or API error — fall through
-		}
-	}
-
-	return [{
-		label: 'Display 1',
-		left: 0,
-		top: 0,
-		width: window.screen.availWidth || window.screen.width,
-		height: window.screen.availHeight || window.screen.height,
-		is_primary: true,
-	}];
-}
-
-/**
- * Captures a single video frame from a MediaStream and returns a data URL.
- */
-function Grab_Frame(stream: MediaStream, width: number, height: number): Promise<string> {
-	return new Promise((resolve, reject) => {
-		const video = document.createElement('video');
-		video.srcObject = stream;
-		video.muted = true;
-		video.playsInline = true;
-
-		video.onloadeddata = () => {
-			// Let a frame render
-			requestAnimationFrame(() => {
-				const canvas = document.createElement('canvas');
-				canvas.width = width;
-				canvas.height = height;
-				const ctx = canvas.getContext('2d');
-				if (!ctx) { reject(new Error('no 2d context')); return; }
-
-				ctx.drawImage(video, 0, 0, width, height);
-				const data_url = canvas.toDataURL('image/jpeg', 0.7);
-
-				// Clean up
-				video.srcObject = null;
-				stream.getTracks().forEach((t) => t.stop());
-
-				resolve(data_url);
-			});
-		};
-
-		video.onerror = () => {
-			stream.getTracks().forEach((t) => t.stop());
-			reject(new Error('video error'));
-		};
-
-		video.play().catch(reject);
-	});
-}
+type ConstraintMode = 'monitors' | 'windows' | 'rectangle';
 
 interface Props {
-	on_monitor_select?: (index: number, screen: ScreenInfo) => void;
+	monitors: MonitorInfo[];
+	thumbnails: Map<number, string>;
+	windows: WindowInfo[];
+	on_constraint_select: (constraint: Omit<HostConstraintMessage, 'type'>) => void;
 }
 
-export default function ConstrainPanel({ on_monitor_select }: Props) {
-	const [screens, set_screens] = useState<ScreenInfo[]>([]);
-	const [selected_index, set_selected_index] = useState(0);
-	const [capturing, set_capturing] = useState(false);
-	const screens_ref = useRef<ScreenInfo[]>([]);
+export default function ConstrainPanel({ monitors, thumbnails, windows, on_constraint_select }: Props) {
+	const [active_tab, set_active_tab] = useState<ConstraintMode>('monitors');
+	const [selected_monitor, set_selected_monitor] = useState(0);
+	const [selected_window, set_selected_window] = useState(0);
+	const [rect, set_rect] = useState({ left: 0, top: 0, width: 1920, height: 1080 });
 
-	const refresh_screens = useCallback(async () => {
-		const detected = await Detect_Screens();
-		set_screens(detected);
-		screens_ref.current = detected;
+	const handle_monitor_select = useCallback((index: number) => {
+		set_selected_monitor(index);
+		on_constraint_select({ mode: 'monitor', monitor_index: index });
+	}, [on_constraint_select]);
 
-		const primary_idx = detected.findIndex((s) => s.is_primary);
-		set_selected_index(primary_idx >= 0 ? primary_idx : 0);
-	}, []);
-
-	useEffect(() => {
-		refresh_screens();
-	}, [refresh_screens]);
-
-	const handle_select = (index: number) => {
-		set_selected_index(index);
-		if (on_monitor_select && screens[index]) {
-			on_monitor_select(index, screens[index]);
+	const handle_window_select = useCallback((index: number) => {
+		set_selected_window(index);
+		const win = windows[index];
+		if (win) {
+			on_constraint_select({ mode: 'window', window_title: win.title });
 		}
-	};
+	}, [windows, on_constraint_select]);
 
-	// Capture a preview thumbnail for a specific monitor
-	const capture_preview = async (index: number) => {
-		if (capturing) return;
-		set_capturing(true);
+	const handle_rect_apply = useCallback(() => {
+		on_constraint_select({
+			mode: 'rectangle',
+			left: rect.left,
+			top: rect.top,
+			width: rect.width,
+			height: rect.height,
+		});
+	}, [rect, on_constraint_select]);
 
-		try {
-			const stream = await navigator.mediaDevices.getDisplayMedia({
-				video: { displaySurface: 'monitor' } as any,
-				audio: false,
-			});
+	// Waiting for host app data
+	if (monitors.length === 0) {
+		return (
+			<div className="constrain-panel">
+				<h3>Constrain Mouse to:</h3>
+				<div className="constrain-placeholder">
+					<span className="monitor-icon">🖥</span>
+					<p>Waiting for host app…</p>
+				</div>
+			</div>
+		);
+	}
 
-			// Grab a frame at thumbnail resolution
-			const thumb_w = 320;
-			const track = stream.getVideoTracks()[0];
-			const settings = track.getSettings();
-			const aspect = (settings.height || 1080) / (settings.width || 1920);
-			const thumb_h = Math.round(thumb_w * aspect);
-
-			const data_url = await Grab_Frame(stream, thumb_w, thumb_h);
-
-			// Update the thumbnail for the clicked monitor
-			set_screens((prev) => {
-				const updated = [...prev];
-				updated[index] = { ...updated[index], thumbnail_url: data_url };
-				return updated;
-			});
-		} catch {
-			// User cancelled the picker or error — ignore
-		} finally {
-			set_capturing(false);
-		}
-	};
-
-	if (screens.length === 0) return null;
-
-	// Bounding box of all screens for proportional layout
-	const min_left = Math.min(...screens.map((s) => s.left));
-	const min_top = Math.min(...screens.map((s) => s.top));
-	const max_right = Math.max(...screens.map((s) => s.left + s.width));
-	const max_bottom = Math.max(...screens.map((s) => s.top + s.height));
+	// Bounding box of all monitors for proportional layout
+	const min_left = Math.min(...monitors.map((m) => m.left));
+	const min_top = Math.min(...monitors.map((m) => m.top));
+	const max_right = Math.max(...monitors.map((m) => m.left + m.width));
+	const max_bottom = Math.max(...monitors.map((m) => m.top + m.height));
 	const total_width = max_right - min_left;
 	const total_height = max_bottom - min_top;
 
-	// Scale to fit the container, with some padding
 	const container_max_w = 440;
 	const container_max_h = 200;
 	const scale = Math.min(container_max_w / total_width, container_max_h / total_height) * 0.9;
@@ -166,64 +71,143 @@ export default function ConstrainPanel({ on_monitor_select }: Props) {
 		<div className="constrain-panel">
 			<h3>Constrain Mouse to:</h3>
 
-			<div className="monitor-layout" style={{ width: layout_w, height: layout_h }}>
-				{screens.map((screen, idx) => {
-					const x = (screen.left - min_left) * scale;
-					const y = (screen.top - min_top) * scale;
-					const w = screen.width * scale;
-					const h = screen.height * scale;
-					const is_selected = idx === selected_index;
-
-					return (
-						<button
-							key={idx}
-							className={`monitor-thumb${is_selected ? ' selected' : ''}`}
-							style={{ left: x, top: y, width: w, height: h }}
-							onClick={() => handle_select(idx)}
-							title={`${screen.label} — ${screen.width}×${screen.height}${screen.is_primary ? ' (Primary)' : ''}`}
-						>
-							{screen.thumbnail_url ? (
-								<img
-									src={screen.thumbnail_url}
-									alt={screen.label}
-									className="monitor-preview"
-									draggable={false}
-								/>
-							) : (
-								<div className="monitor-placeholder">
-									<span className="monitor-icon">🖥</span>
-								</div>
-							)}
-
-							<div className="monitor-label-bar">
-								<span className="monitor-name">
-									{screen.is_primary ? '★ ' : ''}{screen.label}
-								</span>
-								<span className="monitor-res">{screen.width}×{screen.height}</span>
-							</div>
-
-							{/* Capture button overlay */}
-							{!screen.thumbnail_url && (
-								<button
-									className="monitor-capture-btn"
-									onClick={(e) => { e.stopPropagation(); capture_preview(idx); }}
-									disabled={capturing}
-									title="Capture preview"
-								>
-									📷
-								</button>
-							)}
-						</button>
-					);
-				})}
+			<div className="constrain-tabs">
+				<button
+					className={`constrain-tab${active_tab === 'monitors' ? ' active' : ''}`}
+					onClick={() => set_active_tab('monitors')}
+				>
+					Monitors
+				</button>
+				<button
+					className={`constrain-tab${active_tab === 'windows' ? ' active' : ''}`}
+					onClick={() => set_active_tab('windows')}
+				>
+					Windows
+				</button>
+				<button
+					className={`constrain-tab${active_tab === 'rectangle' ? ' active' : ''}`}
+					onClick={() => set_active_tab('rectangle')}
+				>
+					Rectangle
+				</button>
 			</div>
 
-			{screens.length > 1 && (
-				<p className="monitor-selected-hint">
-					Selected: <strong>{screens[selected_index]?.label}</strong>
-				</p>
+			{/* Monitors tab */}
+			{active_tab === 'monitors' && (
+				<>
+					<div className="monitor-layout" style={{ width: layout_w, height: layout_h }}>
+						{monitors.map((monitor, idx) => {
+							const x = (monitor.left - min_left) * scale;
+							const y = (monitor.top - min_top) * scale;
+							const w = monitor.width * scale;
+							const h = monitor.height * scale;
+							const thumb = thumbnails.get(monitor.index);
+
+							return (
+								<button
+									key={monitor.index}
+									className={`monitor-thumb${idx === selected_monitor ? ' selected' : ''}`}
+									style={{ left: x, top: y, width: w, height: h }}
+									onClick={() => handle_monitor_select(idx)}
+									title={`${monitor.label} — ${monitor.width}×${monitor.height}${monitor.is_primary ? ' (Primary)' : ''}`}
+								>
+									{thumb ? (
+										<img
+											src={thumb}
+											alt={monitor.label}
+											className="monitor-preview"
+											draggable={false}
+										/>
+									) : (
+										<div className="monitor-placeholder">
+											<span className="monitor-icon">🖥</span>
+										</div>
+									)}
+
+									<div className="monitor-label-bar">
+										<span className="monitor-name">
+											{monitor.is_primary ? '★ ' : ''}{monitor.label}
+										</span>
+										<span className="monitor-res">{monitor.width}×{monitor.height}</span>
+									</div>
+								</button>
+							);
+						})}
+					</div>
+
+					{monitors.length > 1 && (
+						<p className="monitor-selected-hint">
+							Selected: <strong>{monitors[selected_monitor]?.label}</strong>
+						</p>
+					)}
+				</>
+			)}
+
+			{/* Windows tab */}
+			{active_tab === 'windows' && (
+				<div className="window-list">
+					{windows.length === 0 ? (
+						<p className="window-list-empty">No windows reported by host</p>
+					) : (
+						windows.map((win, idx) => (
+							<button
+								key={idx}
+								className={`window-item${idx === selected_window ? ' selected' : ''}`}
+								onClick={() => handle_window_select(idx)}
+								title={`${win.width}×${win.height} on monitor ${win.monitor_index}`}
+							>
+								<span className="window-title">{win.title}</span>
+								<span className="window-res">{win.width}×{win.height}</span>
+							</button>
+						))
+					)}
+				</div>
+			)}
+
+			{/* Rectangle tab */}
+			{active_tab === 'rectangle' && (
+				<div className="rect-inputs">
+					<div className="rect-row">
+						<label>
+							Left
+							<input
+								type="number"
+								value={rect.left}
+								onChange={(e) => set_rect((r) => ({ ...r, left: Number(e.target.value) }))}
+							/>
+						</label>
+						<label>
+							Top
+							<input
+								type="number"
+								value={rect.top}
+								onChange={(e) => set_rect((r) => ({ ...r, top: Number(e.target.value) }))}
+							/>
+						</label>
+					</div>
+					<div className="rect-row">
+						<label>
+							Width
+							<input
+								type="number"
+								value={rect.width}
+								onChange={(e) => set_rect((r) => ({ ...r, width: Number(e.target.value) }))}
+							/>
+						</label>
+						<label>
+							Height
+							<input
+								type="number"
+								value={rect.height}
+								onChange={(e) => set_rect((r) => ({ ...r, height: Number(e.target.value) }))}
+							/>
+						</label>
+					</div>
+					<button className="btn-primary rect-apply" onClick={handle_rect_apply}>
+						Apply
+					</button>
+				</div>
 			)}
 		</div>
 	);
 }
-

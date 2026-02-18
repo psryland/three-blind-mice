@@ -30,7 +30,49 @@ export interface HostConfigMessage {
 	monitor_name: string;
 }
 
-export type PubSubMessage = CursorMessage | JoinMessage | LeaveMessage | HostConfigMessage;
+export interface MonitorInfo {
+	index: number;
+	label: string;
+	left: number;
+	top: number;
+	width: number;
+	height: number;
+	is_primary: boolean;
+}
+
+export interface WindowInfo {
+	title: string;
+	left: number;
+	top: number;
+	width: number;
+	height: number;
+	monitor_index: number;
+}
+
+export interface HostInfoMessage {
+	type: 'host_info';
+	monitors: MonitorInfo[];
+	windows: WindowInfo[];
+}
+
+export interface HostThumbnailMessage {
+	type: 'host_thumbnail';
+	monitor_index: number;
+	image_data: string;
+}
+
+export interface HostConstraintMessage {
+	type: 'host_constraint';
+	mode: 'monitor' | 'window' | 'rectangle';
+	monitor_index?: number;
+	window_title?: string;
+	left?: number;
+	top?: number;
+	width?: number;
+	height?: number;
+}
+
+export type PubSubMessage = CursorMessage | JoinMessage | LeaveMessage | HostConfigMessage | HostInfoMessage | HostThumbnailMessage | HostConstraintMessage;
 
 // --- Azure Web PubSub JSON subprotocol envelope types ---
 
@@ -149,6 +191,17 @@ export class PubSubClient {
 				this.Send_To_Group(msg);
 			}, THROTTLE_MS - elapsed);
 		}
+	}
+
+	/**
+	 * Send a host constraint message to tell the host app which region to constrain the overlay to.
+	 */
+	send_host_constraint(constraint: Omit<HostConstraintMessage, 'type'>): void {
+		const msg: HostConstraintMessage = {
+			type: 'host_constraint',
+			...constraint,
+		};
+		this.Send_To_Group(msg);
 	}
 
 	/**

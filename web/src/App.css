@@ -48,6 +48,12 @@
 	margin: 0 auto;
 }
 
+/* Landing page: centred single-column layout */
+.app-landing {
+	max-width: 440px;
+	margin: 2rem auto 0;
+}
+
 .app-layout {
 	display: grid;
 	grid-template-columns: 1fr 380px;
@@ -61,48 +67,6 @@
 	flex-direction: column;
 	gap: 1.25rem;
 	min-height: 400px;
-}
-
-/* Shared card mixin - applied to name-input and other cards */
-.name-input {
-	background: var(--color-card-bg);
-	border: 1px solid var(--color-card-border);
-	border-radius: var(--radius);
-	padding: 1.1rem 1.25rem;
-	text-align: left;
-	box-shadow: var(--shadow-sm);
-}
-
-.name-input label {
-	display: block;
-	font-size: 0.75rem;
-	font-weight: 600;
-	color: var(--color-primary);
-	text-transform: uppercase;
-	letter-spacing: 0.05em;
-	margin-bottom: 0.5rem;
-}
-
-.name-input input {
-	width: 100%;
-	padding: 0.55rem 0.8rem;
-	border: 1px solid var(--color-card-border);
-	border-radius: var(--radius-sm);
-	font-size: 0.95rem;
-	color: var(--color-text);
-	background: #fff;
-	transition: border-color 0.15s, box-shadow 0.15s;
-}
-
-.name-input input:focus {
-	outline: none;
-	border-color: var(--color-primary);
-	box-shadow: 0 0 0 3px var(--color-primary-light);
-}
-
-.name-input input:disabled {
-	background: #F7F8FA;
-	color: var(--color-text-muted);
 }
 
 /* Right panel */
@@ -126,10 +90,52 @@
 	margin: 0.25rem 0;
 }
 
-.placeholder-hint {
+/* Host waiting state */
+.host-waiting {
+	background: var(--color-card-bg);
+	border: 1px solid var(--color-card-border);
+	border-radius: var(--radius);
+	padding: 2.5rem 2rem;
+	text-align: center;
+	box-shadow: var(--shadow-sm);
+}
+
+.host-waiting h2 {
+	margin: 0.75rem 0 0.5rem;
+	font-size: 1.1rem;
+	font-weight: 600;
+	color: var(--color-text);
+}
+
+.host-waiting-code {
+	font-family: "Cascadia Code", "Fira Code", "Consolas", monospace;
+	font-size: 2rem;
+	letter-spacing: 0.18em;
+	color: var(--color-primary);
+	font-weight: 700;
+	margin: 0.75rem 0;
+}
+
+.host-waiting-hint {
+	font-size: 0.85rem;
 	color: var(--color-text-muted);
-	font-style: italic;
-	font-size: 0.9rem;
+	margin: 0 0 1.25rem;
+	line-height: 1.5;
+}
+
+/* Animated spinner for host waiting */
+.host-waiting-spinner {
+	display: inline-block;
+	width: 36px;
+	height: 36px;
+	border: 3px solid var(--color-card-border);
+	border-top-color: var(--color-primary);
+	border-radius: 50%;
+	animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+	to { transform: rotate(360deg); }
 }
 
 /* Responsive */
@@ -144,5 +150,9 @@
 
 	.app-body {
 		padding: 1rem;
+	}
+
+	.app-landing {
+		margin-top: 1rem;
 	}
 }

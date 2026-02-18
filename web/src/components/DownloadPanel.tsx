@@ -1,11 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import './DownloadPanel.css';
 
 interface DownloadInfo {
 	platform: string;
 	label: string;
 	filename: string;
-	sha256: string;
 }
 
 const DOWNLOADS: DownloadInfo[] = [
@@ -13,13 +12,11 @@ const DOWNLOADS: DownloadInfo[] = [
 		platform: 'win',
 		label: 'Windows (x64)',
 		filename: 'three-blind-mice-win-x64.zip',
-		sha256: 'BA4047EFA9F4438335A0C07C84B67FE103914C699698D9D89CA580826B6A6E1F',
 	},
 	{
 		platform: 'linux',
 		label: 'Linux (x64)',
 		filename: 'three-blind-mice-linux-x64.zip',
-		sha256: '04C18965218A90E2AE41D2E356D50694923C635E41335A665AACB23C6910EE6C',
 	},
 ];
 
@@ -30,40 +27,18 @@ function Detect_Platform(): string {
 	return 'win';
 }
 
-interface Props {
-	session_code: string | null;
-	is_host: boolean;
-}
-
-export default function DownloadPanel({ session_code, is_host }: Props) {
+export default function DownloadPanel() {
 	const [detected_platform] = useState(Detect_Platform);
 	const [show_all, set_show_all] = useState(false);
-	const [launch_attempted, set_launch_attempted] = useState(false);
 
 	const primary = DOWNLOADS.find((d) => d.platform === detected_platform) ?? DOWNLOADS[0];
 	const others = DOWNLOADS.filter((d) => d.platform !== detected_platform);
 
-	// Reset launch state when session changes
-	useEffect(() => {
-		set_launch_attempted(false);
-	}, [session_code]);
-
-	const handle_launch = () => {
-		if (!session_code) return;
-		set_launch_attempted(true);
-
-		// Attempt to launch via tbm:// protocol
-		window.location.href = `tbm://session/${session_code}`;
-	};
-
 	return (
-		<div className="download-panel">
-			<h3>Host App</h3>
-			<p className="download-description">
-				Download the overlay app to display remote cursors on your desktop.
-				Requires <a href="https://dotnet.microsoft.com/download/dotnet/8.0" target="_blank" rel="noopener noreferrer">.NET 8 Runtime</a>.
+		<div className="download-panel-inline">
+			<p className="download-inline-hint">
+				Don't have the host app? Download it below.
 			</p>
-
 			<div className="download-buttons">
 				<a
 					href={`/downloads/${primary.filename}`}
@@ -90,30 +65,6 @@ export default function DownloadPanel({ session_code, is_host }: Props) {
 					</a>
 				))}
 			</div>
-
-			{session_code && is_host && (
-				<div className="launch-section">
-					<button className="launch-btn" onClick={handle_launch}>
-						🚀 Launch Overlay
-					</button>
-					{launch_attempted && (
-						<p className="launch-hint">
-							If the overlay didn't open, download and run it first. The app registers
-							the <code>tbm://</code> protocol on first run.
-						</p>
-					)}
-				</div>
-			)}
-
-			<details className="hash-details">
-				<summary>Verify download (SHA256)</summary>
-				{DOWNLOADS.map((d) => (
-					<div key={d.platform} className="hash-entry">
-						<span className="hash-label">{d.label}:</span>
-						<code className="hash-value">{d.sha256}</code>
-					</div>
-				))}
-			</details>
 		</div>
 	);
 }

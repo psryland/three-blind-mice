@@ -4,8 +4,8 @@ import MouseCanvas from './components/MouseCanvas';
 import UserList from './components/UserList';
 import ConstrainPanel from './components/ConstrainPanel';
 import DownloadPanel from './components/DownloadPanel';
-import { PubSubClient, PubSubMessage } from './services/pubsub';
-import { User, CURSOR_COLOURS } from './types';
+import { PubSubClient, PubSubMessage, MonitorInfo, WindowInfo, HostConstraintMessage } from './services/pubsub';
+import { User, Generate_Session_Code, CURSOR_COLOURS } from './types';
 import './App.css';
 
 const STORAGE_KEY_NAME = 'tbm_user_name';
@@ -30,6 +30,12 @@ function App() {
 	const [user_name, set_user_name] = useState(() => {
 		return localStorage.getItem(STORAGE_KEY_NAME) ?? '';
 	});
+
+	// Host-specific state: populated when host_info message arrives from the Host App
+	const [host_connected, set_host_connected] = useState(false);
+	const [host_monitors, set_host_monitors] = useState<MonitorInfo[]>([]);
+	const [host_windows, set_host_windows] = useState<WindowInfo[]>([]);
+	const [monitor_thumbnails, set_monitor_thumbnails] = useState<Map<number, string>>(new Map());
 
 	// Stable user identity for the session
 	const user_id = useMemo(() => Generate_User_Id(), []);
@@ -68,18 +74,50 @@ function App() {
 					set_aspect_ratio(msg.aspect_ratio);
 				}
 				break;
+			case 'host_info':
+				set_host_connected(true);
+				set_host_monitors(msg.monitors);
+				set_host_windows(msg.windows);
+				break;
+			case 'host_thumbnail':
+				set_monitor_thumbnails((prev) => {
+					const next = new Map(prev);
+					next.set(msg.monitor_index, msg.image_data);
+					return next;
+				});
+				break;
 		}
 	}, []);
 
-	const handle_join = useCallback((code: string, host: boolean) => {
+	const handle_start_session = useCallback(() => {
+		const code = Generate_Session_Code();
 		set_session_code(code);
-		set_is_host(host);
+		set_is_host(true);
+		set_host_connected(false);
+		set_host_monitors([]);
+		set_host_windows([]);
+		set_monitor_thumbnails(new Map());
 		set_users([{ user_id, name: user_name || 'Anonymous', colour: user_colour }]);
 		set_aspect_ratio(16 / 9);
 
 		const client = new PubSubClient();
 		client_ref.current = client;
+		client.on_message(handle_message);
+		client.on_connection_change((is_connected) => set_connected(is_connected));
+		client.connect(code, user_id, user_name || 'Anonymous', user_colour);
 
+		// Trigger the host app via protocol handler
+		window.location.href = `tbm://session/${code}`;
+	}, [user_id, user_name, user_colour, handle_message]);
+
+	const handle_join = useCallback((code: string) => {
+		set_session_code(code);
+		set_is_host(false);
+		set_users([{ user_id, name: user_name || 'Anonymous', colour: user_colour }]);
+		set_aspect_ratio(16 / 9);
+
+		const client = new PubSubClient();
+		client_ref.current = client;
 		client.on_message(handle_message);
 		client.on_connection_change((is_connected) => set_connected(is_connected));
 		client.connect(code, user_id, user_name || 'Anonymous', user_colour);
@@ -92,10 +130,18 @@ function App() {
 		set_is_host(false);
 		set_connected(false);
 		set_users([]);
+		set_host_connected(false);
+		set_host_monitors([]);
+		set_host_windows([]);
+		set_monitor_thumbnails(new Map());
 	}, []);
 
 	const handle_cursor_move = useCallback((x: number, y: number, button: number) => {
 		client_ref.current?.send_cursor(x, y, button);
+	}, []);
+
+	const handle_constraint_select = useCallback((constraint: Omit<HostConstraintMessage, 'type'>) => {
+		client_ref.current?.send_host_constraint(constraint);
 	}, []);
 
 	// Clean up on unmount
@@ -106,7 +152,34 @@ function App() {
 	}, []);
 
 	const show_canvas = session_code !== null && !is_host && connected;
+	const show_host_waiting = session_code !== null && is_host && !host_connected;
+	const show_host_active = session_code !== null && is_host && host_connected;
 
+	// Landing page: no session active
+	if (session_code === null) {
+		return (
+			<div className="app">
+				<header className="app-header">
+					<h1>Three Blind Mice</h1>
+					<span className="app-header-url">https://three-blind-mice.rylogic.co.nz</span>
+				</header>
+
+				<div className="app-body">
+					<div className="app-landing">
+						<SessionPanel
+							mode="landing"
+							user_name={user_name}
+							on_name_change={set_user_name}
+							on_start_session={handle_start_session}
+							on_join={handle_join}
+						/>
+					</div>
+				</div>
+			</div>
+		);
+	}
+
+	// Active session views (host or remote)
 	return (
 		<div className="app">
 			<header className="app-header">
@@ -117,21 +190,31 @@ function App() {
 			<div className="app-body">
 				<div className="app-layout">
 					<div className="app-left">
-						<div className="name-input">
-							<label htmlFor="user-name">Your Name</label>
-							<input
-								id="user-name"
-								type="text"
-								placeholder="Enter your name"
-								value={user_name}
-								onChange={(e) => set_user_name(e.target.value)}
-								maxLength={32}
-								disabled={session_code !== null}
+						{/* Host waiting for Host App to connect */}
+						{show_host_waiting && (
+							<div className="host-waiting">
+								<div className="host-waiting-spinner" />
+								<h2>Waiting for Host App…</h2>
+								<div className="host-waiting-code">{session_code}</div>
+								<p className="host-waiting-hint">
+									The overlay app should launch automatically.
+									If it didn't, download and run it below.
+								</p>
+								<DownloadPanel />
+							</div>
+						)}
+
+						{/* Host session active: show ConstrainPanel with real monitor data */}
+						{show_host_active && (
+							<ConstrainPanel
+								monitors={host_monitors}
+								thumbnails={monitor_thumbnails}
+								windows={host_windows}
+								on_constraint_select={handle_constraint_select}
 							/>
-						</div>
+						)}
 
-						<ConstrainPanel />
-
+						{/* Remote user: show MouseCanvas */}
 						{show_canvas && (
 							<MouseCanvas
 								aspect_ratio={aspect_ratio}
@@ -141,34 +224,24 @@ function App() {
 							/>
 						)}
 
+						{/* Connecting state */}
 						{session_code && !connected && (
 							<div className="canvas-placeholder">
 								<p>Connecting to session <strong>{session_code}</strong>…</p>
-							</div>
-						)}
-
-						{session_code && is_host && connected && (
-							<div className="canvas-placeholder">
-								<p>
-									Hosting session <strong>{session_code}</strong>
-								</p>
-								<p className="placeholder-hint">Run the desktop overlay to receive mouse input</p>
 							</div>
 						)}
 					</div>
 
 					<div className="app-right">
 						<SessionPanel
-							on_join={handle_join}
-							on_leave={handle_leave}
+							mode="active"
 							session_code={session_code}
+							on_leave={handle_leave}
 						/>
 
 						{session_code && (
 							<UserList users={users} current_user_id={user_id} />
 						)}
-
-						<DownloadPanel session_code={session_code} is_host={is_host} />
 					</div>
 				</div>
 			</div>
