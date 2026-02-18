@@ -37,6 +37,13 @@ internal sealed class Win32Overlay : IDisposable
 	private IntPtr m_brush;
 	private Thread? m_thread;
 	private volatile bool m_disposed;
+	private int m_screen_width;
+	private int m_screen_height;
+
+	/// <summary>
+	/// Callback invoked during WM_PAINT with (hdc, screen_width, screen_height).
+	/// </summary>
+	public Action<IntPtr, int, int>? On_Paint;
 
 	// Delegate must be stored to prevent GC collection while the window is alive
 	private readonly WndProcDelegate m_wnd_proc_delegate;
@@ -120,8 +127,8 @@ internal sealed class Win32Overlay : IDisposable
 
 	private void CreateOverlayWindow()
 	{
-		var screen_width = GetSystemMetrics(SM_CXSCREEN);
-		var screen_height = GetSystemMetrics(SM_CYSCREEN);
+		m_screen_width = GetSystemMetrics(SM_CXSCREEN);
+		m_screen_height = GetSystemMetrics(SM_CYSCREEN);
 
 		// Create the magenta brush used as the transparent background
 		m_brush = CreateSolidBrush(ColorKeyRgb);
@@ -147,7 +154,7 @@ internal sealed class Win32Overlay : IDisposable
 			"Three Blind Mice Overlay",
 			WS_POPUP,
 			0, 0,
-			screen_width, screen_height,
+			m_screen_width, m_screen_height,
 			IntPtr.Zero,
 			IntPtr.Zero,
 			wc.hInstance,
@@ -181,8 +188,11 @@ internal sealed class Win32Overlay : IDisposable
 				return (IntPtr)1;
 
 			case WM_PAINT:
-				// TODO: Draw remote cursors here via GDI+
-				return DefWindowProc(hwnd, msg, w_param, l_param);
+				var ps = new PAINTSTRUCT();
+				var paint_hdc = BeginPaint(hwnd, ref ps);
+				On_Paint?.Invoke(paint_hdc, m_screen_width, m_screen_height);
+				EndPaint(hwnd, ref ps);
+				return IntPtr.Zero;
 
 			case WM_APP_SHUTDOWN:
 				DestroyWindow(hwnd);
@@ -238,6 +248,27 @@ internal sealed class Win32Overlay : IDisposable
 		public int y;
 	}
 
+	[StructLayout(LayoutKind.Sequential)]
+	private struct RECT
+	{
+		public int left;
+		public int top;
+		public int right;
+		public int bottom;
+	}
+
+	[StructLayout(LayoutKind.Sequential)]
+	private struct PAINTSTRUCT
+	{
+		public IntPtr hdc;
+		public int fErase;
+		public RECT rcPaint;
+		public int fRestore;
+		public int fIncUpdate;
+		[MarshalAs(UnmanagedType.ByValArray, SizeConst = 32)]
+		public byte[] rgbReserved;
+	}
+
 	[DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
 	private static extern ushort RegisterClassEx(ref WNDCLASSEX lpwcx);
 
@@ -282,6 +313,12 @@ internal sealed class Win32Overlay : IDisposable
 
 	[DllImport("user32.dll")]
 	private static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+
+	[DllImport("user32.dll")]
+	private static extern IntPtr BeginPaint(IntPtr hWnd, ref PAINTSTRUCT lpPaint);
+
+	[DllImport("user32.dll")]
+	private static extern bool EndPaint(IntPtr hWnd, ref PAINTSTRUCT lpPaint);
 
 	[DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
 	private static extern IntPtr GetModuleHandle(string? lpModuleName);

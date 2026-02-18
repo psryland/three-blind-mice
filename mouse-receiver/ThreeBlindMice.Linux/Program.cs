@@ -1,10 +1,12 @@
-using System.Text.RegularExpressions;
+using ThreeBlindMice.Core;
 
 namespace ThreeBlindMice.Linux;
 
 class Program
 {
-	static int Main(string[] args)
+	private const string NegotiateUrl = "https://three-blind-mice.rylogic.co.nz/api/negotiate";
+
+	static async Task<int> Main(string[] args)
 	{
 		Console.WriteLine("Three Blind Mice — Linux Mouse Receiver");
 
@@ -26,6 +28,60 @@ class Program
 			return 1;
 		}
 
+		var cursor_state = new CursorState();
+		var tray = new TrayIcon();
+		tray.Show();
+
+		// Connect to Web PubSub for cursor updates
+		using var pubsub = new PubSubClient();
+		var user_id = $"host-{Guid.NewGuid():N}"[..16];
+
+		pubsub.On_Message += msg =>
+		{
+			switch (msg)
+			{
+				case CursorMessage cursor_msg:
+					cursor_state.Update_Cursor(cursor_msg);
+					break;
+				case JoinMessage join_msg:
+					cursor_state.Add_User(join_msg);
+					break;
+				case LeaveMessage leave_msg:
+					cursor_state.Remove_User(leave_msg.User_Id);
+					break;
+			}
+		};
+
+		pubsub.On_Connected += () =>
+		{
+			Console.WriteLine("Connected to Web PubSub.");
+			tray.Update_Room(room_code);
+		};
+
+		pubsub.On_Disconnected += () =>
+		{
+			Console.WriteLine("Disconnected from Web PubSub. Reconnecting...");
+		};
+
+		pubsub.On_Error += err =>
+		{
+			Console.Error.WriteLine($"PubSub error: {err}");
+		};
+
+		// Start the WebSocket connection in the background
+		_ = Task.Run(async () =>
+		{
+			try
+			{
+				await pubsub.Connect(NegotiateUrl, room_code, user_id);
+			}
+			catch (Exception ex)
+			{
+				Console.Error.WriteLine($"Failed to connect: {ex.Message}");
+			}
+		});
+
+		// Create and run the overlay
 		using var overlay = new X11Overlay();
 		Console.CancelKeyPress += (_, e) =>
 		{
@@ -35,12 +91,16 @@ class Program
 
 		overlay.OnRender = (display, window, gc, w, h) =>
 		{
-			// TODO: draw remote cursors from WebSocket state
+			CursorRenderer.Render(display, window, gc, cursor_state, w, h);
 		};
 
 		overlay.Init();
 		Console.WriteLine($"Overlay running ({overlay.ScreenWidth}x{overlay.ScreenHeight}). Press Ctrl+C to exit.");
 		overlay.Run();
+
+		// Clean shutdown
+		tray.Shutdown();
+		await pubsub.Disconnect();
 
 		Console.WriteLine("Shutdown complete.");
 		return 0;
@@ -48,26 +108,22 @@ class Program
 
 	/// <summary>
 	/// Extract room code from either tbm://room/XXXX URI or --room XXXX args.
-	/// Validates that the code is 4-8 alphanumeric characters.
+	/// Uses the shared TbmUriParser from Core for validation.
 	/// </summary>
 	private static string? ParseRoomCode(string[] args)
 	{
-		var code_pattern = new Regex(@"^[a-zA-Z0-9]{4,8}$");
+		if (args.Length == 0)
+			return null;
 
-		for (var i = 0; i < args.Length; i++)
+		// Try tbm:// URI first (e.g. launched via protocol handler)
+		if (args[0].StartsWith("tbm://", StringComparison.OrdinalIgnoreCase))
+			return TbmUriParser.TryParseRoomCode(args[0]);
+
+		// Try --room <code>
+		if (args.Length >= 2 && args[0] == "--room")
 		{
-			// tbm://room/<code> protocol URI
-			var uri_match = Regex.Match(args[i], @"^tbm://room/([a-zA-Z0-9]{4,8})$");
-			if (uri_match.Success)
-				return uri_match.Groups[1].Value;
-
-			// --room <code>
-			if (args[i] == "--room" && i + 1 < args.Length)
-			{
-				var candidate = args[i + 1];
-				if (code_pattern.IsMatch(candidate))
-					return candidate;
-			}
+			var code = args[1];
+			return TbmUriParser.IsValidRoomCode(code) ? code : null;
 		}
 
 		return null;

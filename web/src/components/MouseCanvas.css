@@ -1,0 +1,67 @@
+.mouse-canvas-wrapper {
+	position: relative;
+	width: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.mouse-canvas {
+	position: relative;
+	background: #e8e8e8;
+	border: 2px solid #bbb;
+	border-radius: 10px;
+	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+	overflow: hidden;
+	cursor: crosshair;
+	user-select: none;
+}
+
+.mouse-canvas.locked {
+	cursor: none;
+}
+
+.mouse-canvas-grid {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	background-image:
+		linear-gradient(to right, rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+		linear-gradient(to bottom, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+	background-size: 10% 10%;
+}
+
+.mouse-canvas-instruction {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	pointer-events: none;
+	color: #888;
+	font-size: 1.1rem;
+	font-style: italic;
+	text-shadow: 0 1px 2px rgba(255, 255, 255, 0.6);
+}
+
+.mouse-canvas-cursor {
+	position: absolute;
+	width: 16px;
+	height: 16px;
+	border-radius: 50%;
+	transform: translate(-50%, -50%);
+	pointer-events: none;
+	border: 2px solid rgba(255, 255, 255, 0.8);
+	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.mouse-canvas-cursor-label {
+	position: absolute;
+	left: 12px;
+	top: -4px;
+	font-size: 0.7rem;
+	white-space: nowrap;
+	color: #333;
+	font-weight: 600;
+	pointer-events: none;
+}
