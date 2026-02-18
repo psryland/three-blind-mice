@@ -80,3 +80,23 @@
 	pointer-events: none;
 	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
 }
+
+/* Laser pointer mode — pulsing glow when left mouse held */
+.mouse-canvas-cursor.laser-active {
+	width: 20px;
+	height: 20px;
+}
+
+.mouse-canvas-laser-glow {
+	position: absolute;
+	inset: -8px;
+	border-radius: 50%;
+	border: 2px solid;
+	pointer-events: none;
+	animation: laser-pulse 0.8s ease-in-out infinite;
+}
+
+@keyframes laser-pulse {
+	0%, 100% { opacity: 0.5; transform: scale(1); }
+	50% { opacity: 1; transform: scale(1.3); }
+}

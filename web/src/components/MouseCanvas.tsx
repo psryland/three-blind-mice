@@ -132,13 +132,20 @@ export default function MouseCanvas({
 
 				{/* User's own cursor dot */}
 				<div
-					className="mouse-canvas-cursor"
+					className={`mouse-canvas-cursor${button_state === 1 ? ' laser-active' : ''}`}
 					style={{
 						left: `${cursor_x * 100}%`,
 						top: `${cursor_y * 100}%`,
 						backgroundColor: user_colour,
 					}}
 				>
+					{/* Pulsing glow ring shown during laser mode */}
+					{button_state === 1 && (
+						<div
+							className="mouse-canvas-laser-glow"
+							style={{ borderColor: user_colour, boxShadow: `0 0 12px 4px ${user_colour}` }}
+						/>
+					)}
 					<span className="mouse-canvas-cursor-label">{user_name}</span>
 				</div>
 			</div>

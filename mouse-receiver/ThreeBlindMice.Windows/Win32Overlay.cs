@@ -21,8 +21,6 @@ internal sealed class Win32Overlay : IDisposable
 	private const uint WS_EX_NOACTIVATE = 0x08000000;
 
 	private const int SW_SHOW = 5;
-	private const int SM_CXSCREEN = 0;
-	private const int SM_CYSCREEN = 1;
 	private const uint LWA_COLORKEY = 0x00000001;
 	private const uint WM_DESTROY = 0x0002;
 	private const uint WM_PAINT = 0x000F;
@@ -37,19 +35,29 @@ internal sealed class Win32Overlay : IDisposable
 	private IntPtr m_brush;
 	private Thread? m_thread;
 	private volatile bool m_disposed;
-	private int m_screen_width;
-	private int m_screen_height;
+	private readonly int m_monitor_left;
+	private readonly int m_monitor_top;
+	private readonly int m_monitor_width;
+	private readonly int m_monitor_height;
 
 	/// <summary>
-	/// Callback invoked during WM_PAINT with (hdc, screen_width, screen_height).
+	/// Callback invoked during WM_PAINT with (hdc, monitor_width, monitor_height).
 	/// </summary>
 	public Action<IntPtr, int, int>? On_Paint;
 
 	// Delegate must be stored to prevent GC collection while the window is alive
 	private readonly WndProcDelegate m_wnd_proc_delegate;
 
-	public Win32Overlay()
+	/// <param name="left">Monitor left edge in virtual-screen coordinates.</param>
+	/// <param name="top">Monitor top edge in virtual-screen coordinates.</param>
+	/// <param name="width">Monitor width in pixels.</param>
+	/// <param name="height">Monitor height in pixels.</param>
+	public Win32Overlay(int left, int top, int width, int height)
 	{
+		m_monitor_left = left;
+		m_monitor_top = top;
+		m_monitor_width = width;
+		m_monitor_height = height;
 		m_wnd_proc_delegate = WndProc;
 	}
 
@@ -127,9 +135,6 @@ internal sealed class Win32Overlay : IDisposable
 
 	private void CreateOverlayWindow()
 	{
-		m_screen_width = GetSystemMetrics(SM_CXSCREEN);
-		m_screen_height = GetSystemMetrics(SM_CYSCREEN);
-
 		// Create the magenta brush used as the transparent background
 		m_brush = CreateSolidBrush(ColorKeyRgb);
 
@@ -153,8 +158,8 @@ internal sealed class Win32Overlay : IDisposable
 			wc.lpszClassName,
 			"Three Blind Mice Overlay",
 			WS_POPUP,
-			0, 0,
-			m_screen_width, m_screen_height,
+			m_monitor_left, m_monitor_top,
+			m_monitor_width, m_monitor_height,
 			IntPtr.Zero,
 			IntPtr.Zero,
 			wc.hInstance,
@@ -190,7 +195,7 @@ internal sealed class Win32Overlay : IDisposable
 			case WM_PAINT:
 				var ps = new PAINTSTRUCT();
 				var paint_hdc = BeginPaint(hwnd, ref ps);
-				On_Paint?.Invoke(paint_hdc, m_screen_width, m_screen_height);
+				On_Paint?.Invoke(paint_hdc, m_monitor_width, m_monitor_height);
 				EndPaint(hwnd, ref ps);
 				return IntPtr.Zero;
 
@@ -301,9 +306,6 @@ internal sealed class Win32Overlay : IDisposable
 
 	[DllImport("user32.dll")]
 	private static extern bool SetLayeredWindowAttributes(IntPtr hwnd, uint crKey, byte bAlpha, uint dwFlags);
-
-	[DllImport("user32.dll")]
-	private static extern int GetSystemMetrics(int nIndex);
 
 	[DllImport("user32.dll")]
 	private static extern bool InvalidateRect(IntPtr hWnd, IntPtr lpRect, bool bErase);

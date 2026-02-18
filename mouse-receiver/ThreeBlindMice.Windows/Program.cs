@@ -14,7 +14,7 @@ class Program
 		{
 			Console.Error.WriteLine("Usage:");
 			Console.Error.WriteLine("  ThreeBlindMice.Windows tbm://room/<code>");
-			Console.Error.WriteLine("  ThreeBlindMice.Windows --room <code>");
+			Console.Error.WriteLine("  ThreeBlindMice.Windows --room <code> [--monitor N]");
 			Environment.Exit(1);
 			return;
 		}
@@ -28,10 +28,30 @@ class Program
 			Console.WriteLine("Registered tbm:// protocol handler.");
 		}
 
+		// Enumerate monitors and select the requested one
+		var monitors = MonitorEnumerator.Enumerate();
+		Console.WriteLine($"Detected {monitors.Count} monitor(s):");
+		foreach (var mon in monitors)
+		{
+			var primary_tag = mon.Is_Primary ? " (primary)" : "";
+			Console.WriteLine($"  [{mon.Index}] {mon.Device}  {mon.Width}x{mon.Height} at ({mon.Left},{mon.Top}){primary_tag}");
+		}
+
+		var monitor_index = ParseMonitorIndex(args);
+		if (monitor_index < 0 || monitor_index >= monitors.Count)
+		{
+			if (monitor_index != 0)
+				Console.WriteLine($"Monitor index {monitor_index} out of range, falling back to primary.");
+			monitor_index = 0;
+		}
+
+		var selected = monitors[monitor_index];
+		Console.WriteLine($"Using monitor [{selected.Index}] {selected.Device} — {selected.Width}x{selected.Height} at ({selected.Left},{selected.Top})");
+
 		var exit = new ManualResetEventSlim(false);
 
-		// Create and start the overlay window
-		using var overlay = new Win32Overlay();
+		// Create and start the overlay window on the selected monitor
+		using var overlay = new Win32Overlay(selected.Left, selected.Top, selected.Width, selected.Height);
 		overlay.Start();
 		Console.WriteLine("Overlay window created.");
 
@@ -109,12 +129,28 @@ class Program
 			return TbmUriParser.TryParseRoomCode(args[0]);
 
 		// Try --room <code>
-		if (args.Length >= 2 && args[0] == "--room")
+		for (var i = 0; i < args.Length - 1; i++)
 		{
-			var code = args[1];
-			return TbmUriParser.IsValidRoomCode(code) ? code : null;
+			if (args[i] == "--room")
+			{
+				var code = args[i + 1];
+				return TbmUriParser.IsValidRoomCode(code) ? code : null;
+			}
 		}
 
 		return null;
+	}
+
+	/// <summary>
+	/// Parses the --monitor N argument. Returns 0 (primary) if not specified.
+	/// </summary>
+	private static int ParseMonitorIndex(string[] args)
+	{
+		for (var i = 0; i < args.Length - 1; i++)
+		{
+			if (args[i] == "--monitor" && int.TryParse(args[i + 1], out var index))
+				return index;
+		}
+		return 0;
 	}
 }

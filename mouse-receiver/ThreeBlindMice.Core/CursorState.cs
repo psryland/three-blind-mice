@@ -2,6 +2,13 @@ using System.Collections.Concurrent;
 
 namespace ThreeBlindMice.Core;
 
+public struct TrailPoint
+{
+	public double X { get; set; }
+	public double Y { get; set; }
+	public DateTime Timestamp { get; set; }
+}
+
 public class CursorInfo
 {
 	public string User_Id { get; set; } = "";
@@ -11,6 +18,10 @@ public class CursorInfo
 	public double Y { get; set; }
 	public int Button { get; set; }
 	public DateTime Last_Updated { get; set; } = DateTime.UtcNow;
+
+	// Laser pointer trail — populated while Button == 1
+	public List<TrailPoint> Trail_Points { get; } = new();
+	public const int MAX_TRAIL_POINTS = 50;
 }
 
 public class CursorState
@@ -37,15 +48,20 @@ public class CursorState
 			return;
 
 		m_cursors.AddOrUpdate(user_id,
-			_ => new CursorInfo
+			_ =>
 			{
-				User_Id = user_id,
-				Name = name,
-				Colour = msg.Colour,
-				X = x,
-				Y = y,
-				Button = button,
-				Last_Updated = DateTime.UtcNow,
+				var info = new CursorInfo
+				{
+					User_Id = user_id,
+					Name = name,
+					Colour = msg.Colour,
+					X = x,
+					Y = y,
+					Button = button,
+					Last_Updated = DateTime.UtcNow,
+				};
+				Update_Trail(info, x, y, button);
+				return info;
 			},
 			(_, existing) =>
 			{
@@ -55,6 +71,7 @@ public class CursorState
 				existing.Y = y;
 				existing.Button = button;
 				existing.Last_Updated = DateTime.UtcNow;
+				Update_Trail(existing, x, y, button);
 				return existing;
 			});
 	}
@@ -86,6 +103,22 @@ public class CursorState
 		{
 			if (kvp.Value.Last_Updated < cutoff)
 				m_cursors.TryRemove(kvp.Key, out _);
+		}
+	}
+
+	private static void Update_Trail(CursorInfo info, double x, double y, int button)
+	{
+		if (button == 1)
+		{
+			info.Trail_Points.Add(new TrailPoint { X = x, Y = y, Timestamp = DateTime.UtcNow });
+
+			// Trim oldest points to stay within budget
+			while (info.Trail_Points.Count > CursorInfo.MAX_TRAIL_POINTS)
+				info.Trail_Points.RemoveAt(0);
+		}
+		else
+		{
+			info.Trail_Points.Clear();
 		}
 	}
 

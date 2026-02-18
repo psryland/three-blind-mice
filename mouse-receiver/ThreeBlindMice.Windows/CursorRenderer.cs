@@ -53,11 +53,41 @@ internal sealed class CursorRenderer : IDisposable
 			var cx = (int)(cursor.X * screen_width);
 			var cy = (int)(cursor.Y * screen_height);
 
+			// Trail renders behind the cursor arrow
+			DrawTrail(hdc, cursor, colour_ref, screen_width, screen_height);
 			DrawArrow(hdc, cx, cy, colour_ref);
 			DrawLabel(hdc, cx, cy, cursor.Name, colour_ref);
 		}
 
 		SelectObject(hdc, old_font);
+	}
+
+	private static void DrawTrail(IntPtr hdc, CursorInfo cursor, uint colour_ref, int screen_width, int screen_height)
+	{
+		var trail = cursor.Trail_Points;
+		if (trail.Count < 2)
+			return;
+
+		for (var i = 1; i < trail.Count; i++)
+		{
+			// Newer segments are thicker to simulate fading (no alpha with colour key)
+			var age_ratio = (float)i / trail.Count;
+			var pen_width = Math.Max(1, (int)(age_ratio * 4));
+
+			var pen = CreatePen(0, pen_width, colour_ref); // PS_SOLID
+			var old_pen = SelectObject(hdc, pen);
+
+			var x0 = (int)(trail[i - 1].X * screen_width);
+			var y0 = (int)(trail[i - 1].Y * screen_height);
+			var x1 = (int)(trail[i].X * screen_width);
+			var y1 = (int)(trail[i].Y * screen_height);
+
+			MoveToEx(hdc, x0, y0, IntPtr.Zero);
+			LineTo(hdc, x1, y1);
+
+			SelectObject(hdc, old_pen);
+			DeleteObject(pen);
+		}
 	}
 
 	private static void DrawArrow(IntPtr hdc, int cx, int cy, uint colour_ref)
@@ -188,6 +218,12 @@ internal sealed class CursorRenderer : IDisposable
 
 	[DllImport("gdi32.dll")]
 	private static extern bool DeleteObject(IntPtr ho);
+
+	[DllImport("gdi32.dll")]
+	private static extern bool MoveToEx(IntPtr hdc, int x, int y, IntPtr lppt);
+
+	[DllImport("gdi32.dll")]
+	private static extern bool LineTo(IntPtr hdc, int x, int y);
 
 	#endregion
 }
