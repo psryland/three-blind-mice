@@ -72,7 +72,7 @@ class Program
 		pubsub.On_Error += err => Console.Error.WriteLine($"PubSub error: {err}");
 
 		// Connect to Web PubSub
-		const string negotiate_url = "https://three-blind-mice.rylogic.co.nz/api/negotiate";
+		const string negotiate_url = "https://mango-beach-0f96e6000.1.azurestaticapps.net/api/negotiate";
 		var host_id = $"host-{Guid.NewGuid():N}";
 		await pubsub.Connect(negotiate_url, room_code, host_id);
 
