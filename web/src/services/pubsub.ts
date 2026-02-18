@@ -72,7 +72,36 @@ export interface HostConstraintMessage {
 	height?: number;
 }
 
-export type PubSubMessage = CursorMessage | JoinMessage | LeaveMessage | HostConfigMessage | HostInfoMessage | HostThumbnailMessage | HostConstraintMessage;
+export interface HostPickWindowMessage {
+	type: 'host_pick_window';
+}
+
+export interface HostWindowPickedMessage {
+	type: 'host_window_picked';
+	title: string;
+	left: number;
+	top: number;
+	width: number;
+	height: number;
+	monitor_index: number;
+}
+
+export interface HostPickRectangleMessage {
+	type: 'host_pick_rectangle';
+}
+
+export interface HostRectanglePickedMessage {
+	type: 'host_rectangle_picked';
+	left: number;
+	top: number;
+	width: number;
+	height: number;
+}
+
+export type PubSubMessage = CursorMessage | JoinMessage | LeaveMessage | HostConfigMessage | HostInfoMessage | HostThumbnailMessage | HostConstraintMessage | HostWindowPickedMessage | HostRectanglePickedMessage;
+
+// Outbound-only messages (web → host) that aren't expected as inbound
+type OutboundMessage = PubSubMessage | HostPickWindowMessage | HostPickRectangleMessage;
 
 // --- Azure Web PubSub JSON subprotocol envelope types ---
 
@@ -80,7 +109,7 @@ interface SendToGroupEnvelope {
 	type: 'sendToGroup';
 	group: string;
 	dataType: 'json';
-	data: PubSubMessage;
+	data: OutboundMessage;
 }
 
 interface JoinGroupEnvelope {
@@ -205,6 +234,20 @@ export class PubSubClient {
 	}
 
 	/**
+	 * Ask the host app to enter window-pick mode.
+	 */
+	send_host_pick_window(): void {
+		this.Send_To_Group({ type: 'host_pick_window' } as HostPickWindowMessage);
+	}
+
+	/**
+	 * Ask the host app to enter rectangle-select mode.
+	 */
+	send_host_pick_rectangle(): void {
+		this.Send_To_Group({ type: 'host_pick_rectangle' } as HostPickRectangleMessage);
+	}
+
+	/**
 	 * Register a callback for incoming application messages.
 	 */
 	on_message(callback: (msg: PubSubMessage) => void): void {
@@ -283,7 +326,7 @@ export class PubSubClient {
 		}
 	}
 
-	private Send_To_Group(data: PubSubMessage): void {
+	private Send_To_Group(data: OutboundMessage): void {
 		if (!this.m_ws || this.m_ws.readyState !== WebSocket.OPEN) return;
 
 		const envelope: SendToGroupEnvelope = {

@@ -32,11 +32,22 @@ internal sealed class CursorRenderer : IDisposable
 	/// <summary>
 	/// Draws all active cursors onto the given device context.
 	/// Non-cursor areas are filled with the colour key so they appear transparent.
+	/// When constraint parameters are provided, normalised (0,1) cursor coords
+	/// map to the constraint region and are then translated to overlay-local coords.
 	/// </summary>
-	public void Render(IntPtr hdc, CursorState state, int screen_width, int screen_height)
+	public void Render(IntPtr hdc, CursorState state, int overlay_width, int overlay_height,
+		int constraint_left = 0, int constraint_top = 0,
+		int constraint_width = 0, int constraint_height = 0,
+		int overlay_left = 0, int overlay_top = 0)
 	{
+		// If no constraint specified, map (0,1) directly to overlay dimensions
+		var cw = constraint_width > 0 ? constraint_width : overlay_width;
+		var ch = constraint_height > 0 ? constraint_height : overlay_height;
+		var cl = constraint_width > 0 ? constraint_left : overlay_left;
+		var ct = constraint_height > 0 ? constraint_top : overlay_top;
+
 		// Fill entire area with colour key for transparency
-		var full_rect = new RECT { left = 0, top = 0, right = screen_width, bottom = screen_height };
+		var full_rect = new RECT { left = 0, top = 0, right = overlay_width, bottom = overlay_height };
 		var bg_brush = CreateSolidBrush(COLOR_KEY);
 		FillRect(hdc, ref full_rect, bg_brush);
 		DeleteObject(bg_brush);
@@ -49,20 +60,20 @@ internal sealed class CursorRenderer : IDisposable
 			var cursor = kvp.Value;
 			var colour_ref = ParseColour(cursor.Colour);
 
-			// Map normalised [0,1] coordinates to screen pixels
-			var cx = (int)(cursor.X * screen_width);
-			var cy = (int)(cursor.Y * screen_height);
+			// Map normalised [0,1] to constraint region, then to overlay-local coords
+			var cx = (int)(cl + cursor.X * cw) - overlay_left;
+			var cy = (int)(ct + cursor.Y * ch) - overlay_top;
 
-			// Trail renders behind the cursor arrow
-			DrawTrail(hdc, cursor, colour_ref, screen_width, screen_height);
+			DrawTrail(hdc, cursor, colour_ref, cl, ct, cw, ch, overlay_left, overlay_top);
 			DrawArrow(hdc, cx, cy, colour_ref);
-			DrawLabel(hdc, cx, cy, cursor.Name, colour_ref);
+			DrawLabel(hdc, cx, cy, cursor.Display_Name, colour_ref);
 		}
 
 		SelectObject(hdc, old_font);
 	}
 
-	private static void DrawTrail(IntPtr hdc, CursorInfo cursor, uint colour_ref, int screen_width, int screen_height)
+	private static void DrawTrail(IntPtr hdc, CursorInfo cursor, uint colour_ref,
+		int cl, int ct, int cw, int ch, int overlay_left, int overlay_top)
 	{
 		var trail = cursor.Trail_Points;
 		if (trail.Count < 2)
@@ -70,17 +81,16 @@ internal sealed class CursorRenderer : IDisposable
 
 		for (var i = 1; i < trail.Count; i++)
 		{
-			// Newer segments are thicker to simulate fading (no alpha with colour key)
 			var age_ratio = (float)i / trail.Count;
 			var pen_width = Math.Max(1, (int)(age_ratio * 4));
 
-			var pen = CreatePen(0, pen_width, colour_ref); // PS_SOLID
+			var pen = CreatePen(0, pen_width, colour_ref);
 			var old_pen = SelectObject(hdc, pen);
 
-			var x0 = (int)(trail[i - 1].X * screen_width);
-			var y0 = (int)(trail[i - 1].Y * screen_height);
-			var x1 = (int)(trail[i].X * screen_width);
-			var y1 = (int)(trail[i].Y * screen_height);
+			var x0 = (int)(cl + trail[i - 1].X * cw) - overlay_left;
+			var y0 = (int)(ct + trail[i - 1].Y * ch) - overlay_top;
+			var x1 = (int)(cl + trail[i].X * cw) - overlay_left;
+			var y1 = (int)(ct + trail[i].Y * ch) - overlay_top;
 
 			MoveToEx(hdc, x0, y0, IntPtr.Zero);
 			LineTo(hdc, x1, y1);

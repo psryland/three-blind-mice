@@ -139,6 +139,92 @@ public class HostThumbnailMessage : Message
 	public string Data_Url { get; set; } = "";
 }
 
+// Web → Host: request the host to enter window-pick mode
+public class HostPickWindowMessage : Message
+{
+	[JsonPropertyName("type")]
+	public override string Type => "host_pick_window";
+}
+
+// Web → Host: tell the host which region to constrain the overlay to
+public class HostConstraintMessage : Message
+{
+	[JsonPropertyName("type")]
+	public override string Type => "host_constraint";
+
+	[JsonPropertyName("mode")]
+	public string Mode { get; set; } = "";
+
+	[JsonPropertyName("monitor_index")]
+	public int? Monitor_Index { get; set; }
+
+	[JsonPropertyName("window_title")]
+	public string? Window_Title { get; set; }
+
+	[JsonPropertyName("left")]
+	public int? Left { get; set; }
+
+	[JsonPropertyName("top")]
+	public int? Top { get; set; }
+
+	[JsonPropertyName("width")]
+	public int? Width { get; set; }
+
+	[JsonPropertyName("height")]
+	public int? Height { get; set; }
+}
+
+// Host → Web: result of a window pick
+public class HostWindowPickedMessage : Message
+{
+	[JsonPropertyName("type")]
+	public override string Type => "host_window_picked";
+
+	[JsonPropertyName("title")]
+	public string Title { get; set; } = "";
+
+	[JsonPropertyName("left")]
+	public int Left { get; set; }
+
+	[JsonPropertyName("top")]
+	public int Top { get; set; }
+
+	[JsonPropertyName("width")]
+	public int Width { get; set; }
+
+	[JsonPropertyName("height")]
+	public int Height { get; set; }
+
+	[JsonPropertyName("monitor_index")]
+	public int Monitor_Index { get; set; }
+}
+
+// Web → Host: request the host to enter rectangle-select mode
+public class HostPickRectangleMessage : Message
+{
+	[JsonPropertyName("type")]
+	public override string Type => "host_pick_rectangle";
+}
+
+// Host → Web: result of a rectangle selection
+public class HostRectanglePickedMessage : Message
+{
+	[JsonPropertyName("type")]
+	public override string Type => "host_rectangle_picked";
+
+	[JsonPropertyName("left")]
+	public int Left { get; set; }
+
+	[JsonPropertyName("top")]
+	public int Top { get; set; }
+
+	[JsonPropertyName("width")]
+	public int Width { get; set; }
+
+	[JsonPropertyName("height")]
+	public int Height { get; set; }
+}
+
 public static class MessageParser
 {
 	private static readonly JsonSerializerOptions s_options = new()
@@ -164,6 +250,9 @@ public static class MessageParser
 			"host_config" => JsonSerializer.Deserialize<HostConfigMessage>(json, s_options),
 			"host_info" => JsonSerializer.Deserialize<HostInfoMessage>(json, s_options),
 			"host_thumbnail" => JsonSerializer.Deserialize<HostThumbnailMessage>(json, s_options),
+			"host_pick_window" => JsonSerializer.Deserialize<HostPickWindowMessage>(json, s_options),
+			"host_pick_rectangle" => JsonSerializer.Deserialize<HostPickRectangleMessage>(json, s_options),
+			"host_constraint" => JsonSerializer.Deserialize<HostConstraintMessage>(json, s_options),
 			_ => null,
 		};
 	}

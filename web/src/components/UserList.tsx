@@ -1,4 +1,4 @@
-import { User } from '../types';
+import { User, Display_Name } from '../types';
 import './UserList.css';
 
 interface UserListProps {
@@ -29,7 +29,7 @@ export default function UserList({ users, current_user_id }: UserListProps) {
 								className="user-list-dot"
 								style={{ backgroundColor: user.colour }}
 							/>
-							<span>{user.name || 'Anonymous'}</span>
+							<span>{Display_Name(user.name)}</span>
 							{is_current && <span className="user-list-you">(you)</span>}
 						</li>
 					);

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { MonitorInfo, WindowInfo, HostConstraintMessage } from '../services/pubsub';
 import './ConstrainPanel.css';
 
@@ -9,9 +9,20 @@ interface Props {
 	thumbnails: Map<number, string>;
 	windows: WindowInfo[];
 	on_constraint_select: (constraint: Omit<HostConstraintMessage, 'type'>) => void;
+	on_pick_window?: () => void;
+	on_pick_rectangle?: () => void;
+	picking_window?: boolean;
+	picking_rectangle?: boolean;
+	picked_window_title?: string | null;
+	picked_rectangle?: { left: number; top: number; width: number; height: number } | null;
 }
 
-export default function ConstrainPanel({ monitors, thumbnails, windows, on_constraint_select }: Props) {
+export default function ConstrainPanel({
+	monitors, thumbnails, windows, on_constraint_select,
+	on_pick_window, on_pick_rectangle,
+	picking_window, picking_rectangle,
+	picked_window_title, picked_rectangle,
+}: Props) {
 	const [active_tab, set_active_tab] = useState<ConstraintMode>('monitors');
 	const [selected_monitor, set_selected_monitor] = useState(0);
 	const [selected_window, set_selected_window] = useState(0);
@@ -39,6 +50,27 @@ export default function ConstrainPanel({ monitors, thumbnails, windows, on_const
 			height: rect.height,
 		});
 	}, [rect, on_constraint_select]);
+
+	// Auto-select window when the host app picks one
+	useEffect(() => {
+		if (!picked_window_title) return;
+		const idx = windows.findIndex(w => w.title === picked_window_title);
+		if (idx >= 0) {
+			set_selected_window(idx);
+			set_active_tab('windows');
+		}
+	}, [picked_window_title, windows]);
+
+	// Auto-fill rectangle when the host app picks one
+	useEffect(() => {
+		if (!picked_rectangle) return;
+		set_rect(picked_rectangle);
+		set_active_tab('rectangle');
+		on_constraint_select({
+			mode: 'rectangle',
+			...picked_rectangle,
+		});
+	}, [picked_rectangle]); // eslint-disable-line react-hooks/exhaustive-deps
 
 	// Waiting for host app data
 	if (monitors.length === 0) {
@@ -146,6 +178,15 @@ export default function ConstrainPanel({ monitors, thumbnails, windows, on_const
 			{/* Windows tab */}
 			{active_tab === 'windows' && (
 				<div className="window-list">
+					{on_pick_window && (
+						<button
+							className={`btn-target${picking_window ? ' picking' : ''}`}
+							onClick={on_pick_window}
+							disabled={picking_window}
+						>
+							{picking_window ? '⏳ Click a window on your desktop…' : '🎯 Pick a Window'}
+						</button>
+					)}
 					{windows.length === 0 ? (
 						<p className="window-list-empty">No windows reported by host</p>
 					) : (
@@ -167,6 +208,15 @@ export default function ConstrainPanel({ monitors, thumbnails, windows, on_const
 			{/* Rectangle tab */}
 			{active_tab === 'rectangle' && (
 				<div className="rect-inputs">
+					{on_pick_rectangle && (
+						<button
+							className={`btn-target${picking_rectangle ? ' picking' : ''}`}
+							onClick={on_pick_rectangle}
+							disabled={picking_rectangle}
+						>
+							{picking_rectangle ? '⏳ Drag a region on your desktop…' : '🎯 Select Region'}
+						</button>
+					)}
 					<div className="rect-row">
 						<label>
 							Left

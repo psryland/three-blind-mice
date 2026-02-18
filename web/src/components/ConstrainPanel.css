@@ -217,6 +217,39 @@
 	margin-left: 0.5rem;
 }
 
+/* --- Target picker buttons --- */
+.btn-target {
+	width: 100%;
+	padding: 0.55rem 0.75rem;
+	margin-bottom: 0.5rem;
+	border: 2px dashed var(--color-primary);
+	border-radius: var(--radius-sm);
+	background: var(--color-primary-light);
+	color: var(--color-primary);
+	font-size: 0.82rem;
+	font-weight: 600;
+	cursor: pointer;
+	transition: background 0.15s, border-color 0.15s;
+}
+
+.btn-target:hover:not(:disabled) {
+	background: var(--color-primary);
+	color: #fff;
+}
+
+.btn-target.picking {
+	border-style: solid;
+	background: var(--color-primary);
+	color: #fff;
+	cursor: wait;
+	animation: target-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes target-pulse {
+	0%, 100% { opacity: 1; }
+	50% { opacity: 0.7; }
+}
+
 /* --- Rectangle inputs --- */
 .rect-inputs {
 	display: flex;

@@ -30,3 +30,30 @@ export function Generate_Session_Code(): string {
 	}
 	return code;
 }
+
+const ADJECTIVES = [
+	'Swift', 'Clever', 'Brave', 'Calm', 'Dizzy', 'Eager', 'Fancy', 'Gentle',
+	'Happy', 'Jolly', 'Kind', 'Lucky', 'Mighty', 'Noble', 'Plucky', 'Quick',
+	'Rusty', 'Sneaky', 'Tiny', 'Witty', 'Zesty', 'Bold', 'Crisp', 'Daring',
+	'Fierce', 'Grand', 'Hasty', 'Icy', 'Jazzy', 'Keen', 'Lofty', 'Merry',
+];
+
+const NOUNS = [
+	'Mouse', 'Fox', 'Owl', 'Bear', 'Wolf', 'Hawk', 'Panda', 'Otter',
+	'Raven', 'Hare', 'Lynx', 'Finch', 'Crane', 'Badger', 'Robin', 'Viper',
+	'Moose', 'Cobra', 'Falcon', 'Gecko', 'Ibis', 'Jackal', 'Koala', 'Lemur',
+	'Newt', 'Osprey', 'Quail', 'Sloth', 'Tiger', 'Wombat', 'Yak', 'Ferret',
+];
+
+export function Generate_Random_Name(): string {
+	const adj_bytes = new Uint8Array(1);
+	const noun_bytes = new Uint8Array(1);
+	crypto.getRandomValues(adj_bytes);
+	crypto.getRandomValues(noun_bytes);
+	return `${ADJECTIVES[adj_bytes[0] % ADJECTIVES.length]} ${NOUNS[noun_bytes[0] % NOUNS.length]}`;
+}
+
+/// If a user types "Anonymous", we fix that for them 🐭
+export function Display_Name(name: string): string {
+	return name.toLowerCase() === 'anonymous' ? 'Anonymouse 🐭' : name;
+}

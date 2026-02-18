@@ -22,6 +22,8 @@ public class CursorInfo
 	// Laser pointer trail — populated while Button == 1
 	public List<TrailPoint> Trail_Points { get; } = new();
 	public const int MAX_TRAIL_POINTS = 50;
+
+	public string Display_Name => Name.Equals("Anonymous", StringComparison.OrdinalIgnoreCase) ? "Anonymouse" : Name;
 }
 
 public class CursorState

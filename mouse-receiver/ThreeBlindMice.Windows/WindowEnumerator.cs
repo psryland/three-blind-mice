@@ -8,7 +8,7 @@ namespace ThreeBlindMice.Windows;
 /// </summary>
 internal static class WindowEnumerator
 {
-	internal record WindowInfo(string Title, int Left, int Top, int Width, int Height, int Monitor_Index);
+	internal record WindowInfo(string Title, IntPtr Hwnd, int Left, int Top, int Width, int Height, int Monitor_Index);
 
 	private static readonly HashSet<string> s_excluded_titles = new(StringComparer.OrdinalIgnoreCase)
 	{
@@ -53,7 +53,7 @@ internal static class WindowEnumerator
 			var center_y = rect.top + h / 2;
 			var monitor_index = Find_Monitor_Index(monitors, center_x, center_y);
 
-			windows.Add(new WindowInfo(title, rect.left, rect.top, w, h, monitor_index));
+			windows.Add(new WindowInfo(title, hwnd, rect.left, rect.top, w, h, monitor_index));
 			return true;
 		}, IntPtr.Zero);
 

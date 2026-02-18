@@ -5,10 +5,17 @@ import UserList from './components/UserList';
 import ConstrainPanel from './components/ConstrainPanel';
 import DownloadPanel from './components/DownloadPanel';
 import { PubSubClient, PubSubMessage, MonitorInfo, WindowInfo, HostConstraintMessage } from './services/pubsub';
-import { User, Generate_Session_Code, CURSOR_COLOURS } from './types';
+import { User, Generate_Session_Code, Generate_Random_Name, CURSOR_COLOURS } from './types';
 import './App.css';
 
 const STORAGE_KEY_NAME = 'tbm_user_name';
+
+interface PickedRect {
+	left: number;
+	top: number;
+	width: number;
+	height: number;
+}
 
 function Generate_User_Id(): string {
 	const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -28,7 +35,7 @@ function App() {
 	const [users, set_users] = useState<User[]>([]);
 	const [aspect_ratio, set_aspect_ratio] = useState(16 / 9);
 	const [user_name, set_user_name] = useState(() => {
-		return localStorage.getItem(STORAGE_KEY_NAME) ?? '';
+		return localStorage.getItem(STORAGE_KEY_NAME) ?? Generate_Random_Name();
 	});
 
 	// Host-specific state: populated when host_info message arrives from the Host App
@@ -36,6 +43,12 @@ function App() {
 	const [host_monitors, set_host_monitors] = useState<MonitorInfo[]>([]);
 	const [host_windows, set_host_windows] = useState<WindowInfo[]>([]);
 	const [monitor_thumbnails, set_monitor_thumbnails] = useState<Map<number, string>>(new Map());
+
+	// Picker state
+	const [picking_window, set_picking_window] = useState(false);
+	const [picking_rectangle, set_picking_rectangle] = useState(false);
+	const [picked_window_title, set_picked_window_title] = useState<string | null>(null);
+	const [picked_rectangle, set_picked_rectangle] = useState<PickedRect | null>(null);
 
 	// Stable user identity for the session
 	const user_id = useMemo(() => Generate_User_Id(), []);
@@ -86,6 +99,14 @@ function App() {
 					return next;
 				});
 				break;
+			case 'host_window_picked':
+				set_picking_window(false);
+				set_picked_window_title(msg.title);
+				break;
+			case 'host_rectangle_picked':
+				set_picking_rectangle(false);
+				set_picked_rectangle({ left: msg.left, top: msg.top, width: msg.width, height: msg.height });
+				break;
 		}
 	}, []);
 
@@ -97,14 +118,14 @@ function App() {
 		set_host_monitors([]);
 		set_host_windows([]);
 		set_monitor_thumbnails(new Map());
-		set_users([{ user_id, name: user_name || 'Anonymous', colour: user_colour }]);
+		set_users([{ user_id, name: user_name, colour: user_colour }]);
 		set_aspect_ratio(16 / 9);
 
 		const client = new PubSubClient();
 		client_ref.current = client;
 		client.on_message(handle_message);
 		client.on_connection_change((is_connected) => set_connected(is_connected));
-		client.connect(code, user_id, user_name || 'Anonymous', user_colour);
+		client.connect(code, user_id, user_name, user_colour);
 
 		// Trigger the host app via protocol handler
 		window.location.href = `tbm://session/${code}`;
@@ -113,14 +134,14 @@ function App() {
 	const handle_join = useCallback((code: string) => {
 		set_session_code(code);
 		set_is_host(false);
-		set_users([{ user_id, name: user_name || 'Anonymous', colour: user_colour }]);
+		set_users([{ user_id, name: user_name, colour: user_colour }]);
 		set_aspect_ratio(16 / 9);
 
 		const client = new PubSubClient();
 		client_ref.current = client;
 		client.on_message(handle_message);
 		client.on_connection_change((is_connected) => set_connected(is_connected));
-		client.connect(code, user_id, user_name || 'Anonymous', user_colour);
+		client.connect(code, user_id, user_name, user_colour);
 	}, [user_id, user_name, user_colour, handle_message]);
 
 	const handle_leave = useCallback(() => {
@@ -142,6 +163,18 @@ function App() {
 
 	const handle_constraint_select = useCallback((constraint: Omit<HostConstraintMessage, 'type'>) => {
 		client_ref.current?.send_host_constraint(constraint);
+	}, []);
+
+	const handle_pick_window = useCallback(() => {
+		set_picking_window(true);
+		set_picked_window_title(null);
+		client_ref.current?.send_host_pick_window();
+	}, []);
+
+	const handle_pick_rectangle = useCallback(() => {
+		set_picking_rectangle(true);
+		set_picked_rectangle(null);
+		client_ref.current?.send_host_pick_rectangle();
 	}, []);
 
 	// Clean up on unmount
@@ -211,6 +244,12 @@ function App() {
 								thumbnails={monitor_thumbnails}
 								windows={host_windows}
 								on_constraint_select={handle_constraint_select}
+								on_pick_window={handle_pick_window}
+								on_pick_rectangle={handle_pick_rectangle}
+								picking_window={picking_window}
+								picking_rectangle={picking_rectangle}
+								picked_window_title={picked_window_title}
+								picked_rectangle={picked_rectangle}
 							/>
 						)}
 
@@ -219,7 +258,7 @@ function App() {
 							<MouseCanvas
 								aspect_ratio={aspect_ratio}
 								on_cursor_move={handle_cursor_move}
-								user_name={user_name || 'Anonymous'}
+								user_name={user_name}
 								user_colour={user_colour}
 							/>
 						)}

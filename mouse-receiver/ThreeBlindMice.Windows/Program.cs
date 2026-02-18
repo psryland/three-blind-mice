@@ -4,31 +4,35 @@ namespace ThreeBlindMice.Windows;
 
 class Program
 {
+	// The constraint region defines where normalised (0,1) cursor coords map to in screen space.
+	// Volatile because it's read by the overlay paint thread and written by PubSub/tracker threads.
+	private static volatile int[] s_constraint = Array.Empty<int>(); // [left, top, width, height]
+	private static WindowTracker? s_window_tracker;
+	private static readonly object s_tracker_lock = new();
+
 	static async Task Main(string[] args)
 	{
 		Console.WriteLine("Three Blind Mice — Windows Mouse Receiver");
 
-		// Parse session code from args: either a tbm:// URI or --session <code>
 		var session_code = ParseSessionCode(args);
 		if (session_code == null)
 		{
 			Console.Error.WriteLine("Usage:");
 			Console.Error.WriteLine("  ThreeBlindMice.Windows tbm://session/<code>");
-			Console.Error.WriteLine("  ThreeBlindMice.Windows --session <code> [--monitor N]");
+			Console.Error.WriteLine("  ThreeBlindMice.Windows --session <code>");
 			Environment.Exit(1);
 			return;
 		}
 
 		Console.WriteLine($"Session code: {session_code}");
 
-		// Register the tbm:// protocol handler if not already done
 		if (!ProtocolRegistrar.Is_Registered())
 		{
 			ProtocolRegistrar.Register();
 			Console.WriteLine("Registered tbm:// protocol handler.");
 		}
 
-		// Enumerate monitors and select the requested one
+		// Enumerate monitors
 		var monitors = MonitorEnumerator.Enumerate();
 		Console.WriteLine($"Detected {monitors.Count} monitor(s):");
 		foreach (var mon in monitors)
@@ -37,36 +41,43 @@ class Program
 			Console.WriteLine($"  [{mon.Index}] {mon.Device}  {mon.Width}x{mon.Height} at ({mon.Left},{mon.Top}){primary_tag}");
 		}
 
-		var monitor_index = ParseMonitorIndex(args);
-		if (monitor_index < 0 || monitor_index >= monitors.Count)
-		{
-			if (monitor_index != 0)
-				Console.WriteLine($"Monitor index {monitor_index} out of range, falling back to primary.");
-			monitor_index = 0;
-		}
+		// Overlay covers the entire virtual screen so cursors can appear on any monitor
+		var vx = monitors.Min(m => m.Left);
+		var vy = monitors.Min(m => m.Top);
+		var vr = monitors.Max(m => m.Left + m.Width);
+		var vb = monitors.Max(m => m.Top + m.Height);
+		var vw = vr - vx;
+		var vh = vb - vy;
 
-		var selected = monitors[monitor_index];
-		Console.WriteLine($"Using monitor [{selected.Index}] {selected.Device} — {selected.Width}x{selected.Height} at ({selected.Left},{selected.Top})");
+		// Default constraint: primary monitor (or first)
+		var primary = monitors.Where(m => m.Is_Primary).DefaultIfEmpty(monitors[0]).First();
+		s_constraint = new[] { primary.Left, primary.Top, primary.Width, primary.Height };
+		Console.WriteLine($"Default constraint: {primary.Device} ({primary.Width}x{primary.Height})");
 
 		var exit = new ManualResetEventSlim(false);
 
-		// Create and start the overlay window on the selected monitor
-		using var overlay = new Win32Overlay(selected.Left, selected.Top, selected.Width, selected.Height);
+		using var overlay = new Win32Overlay(vx, vy, vw, vh);
 		overlay.Start();
-		Console.WriteLine("Overlay window created.");
+		Console.WriteLine($"Overlay window created ({vw}x{vh} virtual screen).");
 
-		// Create cursor state and renderer
 		var cursor_state = new CursorState();
 		using var renderer = new CursorRenderer();
 
-		// Hook overlay paint to render cursors
+		// Paint callback: maps normalised coords through the constraint region
 		overlay.On_Paint = (hdc, w, h) =>
 		{
 			cursor_state.Remove_Inactive();
-			renderer.Render(hdc, cursor_state, w, h);
+			var cr = s_constraint;
+			if (cr.Length == 4)
+				renderer.Render(hdc, cursor_state, w, h, cr[0], cr[1], cr[2], cr[3], vx, vy);
+			else
+				renderer.Render(hdc, cursor_state, w, h);
 		};
 
-		// Create PubSub client and wire up message handling
+		// Enumerate windows (with HWNDs for tracking)
+		var windows = WindowEnumerator.Enumerate(monitors);
+		Console.WriteLine($"Enumerated {windows.Count} window(s).");
+
 		using var pubsub = new PubSubClient();
 		pubsub.On_Message += msg =>
 		{
@@ -84,6 +95,55 @@ class Program
 					cursor_state.Remove_User(leave_msg.User_Id);
 					overlay.RequestRepaint();
 					break;
+
+				case HostConstraintMessage constraint_msg:
+					Apply_Constraint(constraint_msg, monitors, windows, overlay);
+					break;
+
+				case HostPickWindowMessage:
+					_ = Task.Run(async () =>
+					{
+						var picked = await ScreenPicker.Pick_Window_Async(monitors);
+						if (picked != null)
+						{
+							await pubsub.Send_Message(new HostWindowPickedMessage
+							{
+								Title = picked.Title,
+								Left = picked.Left,
+								Top = picked.Top,
+								Width = picked.Width,
+								Height = picked.Height,
+								Monitor_Index = picked.Monitor_Index,
+							});
+
+							// Immediately constrain to the picked window and start tracking
+							Start_Window_Tracking(picked.Hwnd, overlay);
+						}
+					});
+					break;
+
+				case HostPickRectangleMessage:
+					_ = Task.Run(async () =>
+					{
+						var picked = await ScreenPicker.Pick_Rectangle_Async();
+						if (picked != null)
+						{
+							await pubsub.Send_Message(new HostRectanglePickedMessage
+							{
+								Left = picked.Left,
+								Top = picked.Top,
+								Width = picked.Width,
+								Height = picked.Height,
+							});
+
+							// Immediately constrain to the picked rectangle
+							Stop_Window_Tracking();
+							s_constraint = new[] { picked.Left, picked.Top, picked.Width, picked.Height };
+							Console.WriteLine($"Constraint set to rectangle ({picked.Left},{picked.Top}) {picked.Width}x{picked.Height}");
+							overlay.RequestRepaint();
+						}
+					});
+					break;
 			}
 		};
 
@@ -91,15 +151,11 @@ class Program
 		pubsub.On_Disconnected += () => Console.WriteLine("Disconnected from Web PubSub.");
 		pubsub.On_Error += err => Console.Error.WriteLine($"PubSub error: {err}");
 
-		// Connect to Web PubSub
 		const string negotiate_url = "https://mango-beach-0f96e6000.1.azurestaticapps.net/api/negotiate";
 		var host_id = $"host-{Guid.NewGuid():N}";
 		await pubsub.Connect(negotiate_url, session_code, host_id);
 
-		// Send host info (monitors + visible windows) to connected web clients
-		var windows = WindowEnumerator.Enumerate(monitors);
-		Console.WriteLine($"Enumerated {windows.Count} window(s).");
-
+		// Send host info
 		var host_info = new HostInfoMessage
 		{
 			Monitors = monitors.Select(m => new MonitorData
@@ -125,18 +181,12 @@ class Program
 		await pubsub.Send_Message(host_info);
 		Console.WriteLine("Sent host info.");
 
-		// Capture and send a screenshot thumbnail for each monitor
 		foreach (var mon in monitors)
 		{
 			var data_url = ScreenCapture.Capture_Monitor(mon.Left, mon.Top, mon.Width, mon.Height);
 			if (data_url != null)
 			{
-				var thumbnail_msg = new HostThumbnailMessage
-				{
-					Monitor_Index = mon.Index,
-					Data_Url = data_url,
-				};
-				await pubsub.Send_Message(thumbnail_msg);
+				await pubsub.Send_Message(new HostThumbnailMessage { Monitor_Index = mon.Index, Data_Url = data_url });
 				Console.WriteLine($"Sent thumbnail for monitor [{mon.Index}].");
 			}
 			else
@@ -145,7 +195,6 @@ class Program
 			}
 		}
 
-		// Create system tray icon
 		using var tray = new TrayIcon(() =>
 		{
 			overlay.Shutdown();
@@ -153,7 +202,6 @@ class Program
 		});
 		tray.Show(session_code);
 
-		// Handle Ctrl+C for clean shutdown
 		Console.CancelKeyPress += (_, e) =>
 		{
 			e.Cancel = true;
@@ -164,8 +212,100 @@ class Program
 		Console.WriteLine("Running. Right-click tray icon or press Ctrl+C to exit.");
 		exit.Wait();
 
+		Stop_Window_Tracking();
 		await pubsub.Disconnect();
 		Console.WriteLine("Exiting.");
+	}
+
+	/// <summary>
+	/// Applies a constraint message from the web UI (monitor/window/rectangle selection).
+	/// </summary>
+	private static void Apply_Constraint(
+		HostConstraintMessage msg,
+		List<MonitorEnumerator.MonitorInfo> monitors,
+		List<WindowEnumerator.WindowInfo> windows,
+		Win32Overlay overlay)
+	{
+		switch (msg.Mode)
+		{
+			case "monitor":
+			{
+				Stop_Window_Tracking();
+				var idx = msg.Monitor_Index ?? 0;
+				var mon = monitors.Where(m => m.Index == idx).DefaultIfEmpty(monitors[0]).First();
+				s_constraint = new[] { mon.Left, mon.Top, mon.Width, mon.Height };
+				Console.WriteLine($"Constraint set to monitor [{mon.Index}] {mon.Device}");
+				overlay.RequestRepaint();
+				break;
+			}
+			case "window":
+			{
+				// Find the window by title and start tracking its position
+				var target = windows.FirstOrDefault(w =>
+					w.Title.Equals(msg.Window_Title, StringComparison.OrdinalIgnoreCase));
+				if (target != null)
+				{
+					Start_Window_Tracking(target.Hwnd, overlay);
+				}
+				else
+				{
+					Console.WriteLine($"Constraint: window '{msg.Window_Title}' not found.");
+				}
+				break;
+			}
+			case "rectangle":
+			{
+				Stop_Window_Tracking();
+				var l = msg.Left ?? 0;
+				var t = msg.Top ?? 0;
+				var w = msg.Width ?? 1920;
+				var h = msg.Height ?? 1080;
+				s_constraint = new[] { l, t, w, h };
+				Console.WriteLine($"Constraint set to rectangle ({l},{t}) {w}x{h}");
+				overlay.RequestRepaint();
+				break;
+			}
+		}
+	}
+
+	/// <summary>
+	/// Begins tracking a window by HWND. Updates the constraint region as the window moves.
+	/// </summary>
+	private static void Start_Window_Tracking(IntPtr hwnd, Win32Overlay overlay)
+	{
+		lock (s_tracker_lock)
+		{
+			s_window_tracker?.Stop();
+			s_window_tracker?.Dispose();
+
+			var tracker = new WindowTracker(hwnd);
+			tracker.On_Bounds_Changed += bounds =>
+			{
+				s_constraint = new[] { bounds.Left, bounds.Top, bounds.Width, bounds.Height };
+				overlay.RequestRepaint();
+			};
+			tracker.On_Window_Lost += () =>
+			{
+				Console.WriteLine("Tracked window was closed.");
+			};
+			tracker.Start();
+			s_window_tracker = tracker;
+			Console.WriteLine("Window tracking started.");
+		}
+	}
+
+	private static void Stop_Window_Tracking()
+	{
+		lock (s_tracker_lock)
+		{
+			if (s_window_tracker != null)
+			{
+				s_window_tracker.Stop();
+				s_window_tracker.Dispose();
+				s_window_tracker = null;
+				Console.WriteLine("Window tracking stopped.");
+			}
+		}
 	}
 
 	private static string? ParseSessionCode(string[] args)
@@ -173,11 +313,9 @@ class Program
 		if (args.Length == 0)
 			return null;
 
-		// Try tbm:// URI first (e.g. launched via protocol handler)
 		if (args[0].StartsWith("tbm://", StringComparison.OrdinalIgnoreCase))
 			return TbmUriParser.TryParseSessionCode(args[0]);
 
-		// Try --session <code>
 		for (var i = 0; i < args.Length - 1; i++)
 		{
 			if (args[i] == "--session")
@@ -188,18 +326,5 @@ class Program
 		}
 
 		return null;
-	}
-
-	/// <summary>
-	/// Parses the --monitor N argument. Returns 0 (primary) if not specified.
-	/// </summary>
-	private static int ParseMonitorIndex(string[] args)
-	{
-		for (var i = 0; i < args.Length - 1; i++)
-		{
-			if (args[i] == "--monitor" && int.TryParse(args[i + 1], out var index))
-				return index;
-		}
-		return 0;
 	}
 }

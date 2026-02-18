@@ -1,4 +1,5 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
+import { Display_Name } from '../types';
 import './MouseCanvas.css';
 
 interface MouseCanvasProps {
@@ -146,7 +147,7 @@ export default function MouseCanvas({
 							style={{ borderColor: user_colour, boxShadow: `0 0 12px 4px ${user_colour}` }}
 						/>
 					)}
-					<span className="mouse-canvas-cursor-label">{user_name}</span>
+					<span className="mouse-canvas-cursor-label">{Display_Name(user_name)}</span>
 				</div>
 			</div>
 		</div>
