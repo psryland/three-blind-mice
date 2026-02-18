@@ -35,7 +35,8 @@ function App() {
 	const [users, set_users] = useState<User[]>([]);
 	const [aspect_ratio, set_aspect_ratio] = useState(16 / 9);
 	const [user_name, set_user_name] = useState(() => {
-		return localStorage.getItem(STORAGE_KEY_NAME) ?? Generate_Random_Name();
+		const stored = localStorage.getItem(STORAGE_KEY_NAME);
+		return stored && stored.trim() ? stored : Generate_Random_Name();
 	});
 
 	// Host-specific state: populated when host_info message arrives from the Host App

@@ -130,8 +130,11 @@ export default function MouseCanvas({
 		if (e.button === 0) {
 			set_button_state(1);
 			on_cursor_move(cursor_x, cursor_y, 1);
+		} else if (e.button === 2 && is_locked) {
+			// Right-click releases pointer lock
+			document.exitPointerLock();
 		}
-	}, [cursor_x, cursor_y, on_cursor_move]);
+	}, [cursor_x, cursor_y, on_cursor_move, is_locked]);
 
 	const handle_mouse_up = useCallback((e: React.MouseEvent) => {
 		if (e.button === 0) {
@@ -140,8 +143,13 @@ export default function MouseCanvas({
 		}
 	}, [cursor_x, cursor_y, on_cursor_move]);
 
+	// Prevent context menu on right-click inside the canvas
+	const handle_context_menu = useCallback((e: React.MouseEvent) => {
+		e.preventDefault();
+	}, []);
+
 	const instruction_text = is_locked
-		? 'Press Esc to release · Scroll to zoom'
+		? 'Esc or right-click to release · Scroll to zoom'
 		: 'Click to lock cursor';
 
 	// Grid cell size scales with zoom: at 1x = 10% cells, at 2x = 20% cells, etc.
@@ -162,6 +170,7 @@ export default function MouseCanvas({
 				onMouseMove={handle_mouse_move}
 				onMouseDown={handle_mouse_down}
 				onMouseUp={handle_mouse_up}
+				onContextMenu={handle_context_menu}
 			>
 				<div className="mouse-canvas-grid" style={grid_style} />
 
