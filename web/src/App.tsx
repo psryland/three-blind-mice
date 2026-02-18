@@ -155,6 +155,9 @@ function App() {
 		set_host_monitors([]);
 		set_host_windows([]);
 		set_monitor_thumbnails(new Map());
+
+		// Clear ?session= from URL so auto-join doesn't re-trigger on landing
+		window.history.replaceState({}, '', window.location.pathname);
 	}, []);
 
 	const handle_cursor_move = useCallback((x: number, y: number, button: number) => {
@@ -214,7 +217,7 @@ function App() {
 
 	// Active session views (host or remote)
 	return (
-		<div className="app">
+		<div className={`app${show_canvas ? ' app-remote-view' : ''}`}>
 			<header className="app-header">
 				<h1>Three Blind Mice</h1>
 				<span className="app-header-url">https://three-blind-mice.rylogic.co.nz</span>

@@ -126,7 +126,7 @@ interface NegotiateResponse {
 // --- PubSubClient ---
 
 const SUBPROTOCOL = 'json.webpubsub.azure.v1';
-const THROTTLE_MS = 50; // ~20fps
+const THROTTLE_MS = 16; // ~60fps for responsive cursor movement
 const MAX_BACKOFF_MS = 30_000;
 const INITIAL_BACKOFF_MS = 1_000;
 
