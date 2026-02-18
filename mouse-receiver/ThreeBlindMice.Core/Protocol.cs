@@ -70,6 +70,75 @@ public class HostConfigMessage : Message
 	public string Monitor_Name { get; set; } = "";
 }
 
+public class MonitorData
+{
+	[JsonPropertyName("index")]
+	public int Index { get; set; }
+
+	[JsonPropertyName("device")]
+	public string Device { get; set; } = "";
+
+	[JsonPropertyName("left")]
+	public int Left { get; set; }
+
+	[JsonPropertyName("top")]
+	public int Top { get; set; }
+
+	[JsonPropertyName("width")]
+	public int Width { get; set; }
+
+	[JsonPropertyName("height")]
+	public int Height { get; set; }
+
+	[JsonPropertyName("is_primary")]
+	public bool Is_Primary { get; set; }
+}
+
+public class WindowData
+{
+	[JsonPropertyName("title")]
+	public string Title { get; set; } = "";
+
+	[JsonPropertyName("left")]
+	public int Left { get; set; }
+
+	[JsonPropertyName("top")]
+	public int Top { get; set; }
+
+	[JsonPropertyName("width")]
+	public int Width { get; set; }
+
+	[JsonPropertyName("height")]
+	public int Height { get; set; }
+
+	[JsonPropertyName("monitor_index")]
+	public int Monitor_Index { get; set; }
+}
+
+public class HostInfoMessage : Message
+{
+	[JsonPropertyName("type")]
+	public override string Type => "host_info";
+
+	[JsonPropertyName("monitors")]
+	public List<MonitorData> Monitors { get; set; } = new();
+
+	[JsonPropertyName("windows")]
+	public List<WindowData> Windows { get; set; } = new();
+}
+
+public class HostThumbnailMessage : Message
+{
+	[JsonPropertyName("type")]
+	public override string Type => "host_thumbnail";
+
+	[JsonPropertyName("monitor_index")]
+	public int Monitor_Index { get; set; }
+
+	[JsonPropertyName("data_url")]
+	public string Data_Url { get; set; } = "";
+}
+
 public static class MessageParser
 {
 	private static readonly JsonSerializerOptions s_options = new()
@@ -93,6 +162,8 @@ public static class MessageParser
 			"join" => JsonSerializer.Deserialize<JoinMessage>(json, s_options),
 			"leave" => JsonSerializer.Deserialize<LeaveMessage>(json, s_options),
 			"host_config" => JsonSerializer.Deserialize<HostConfigMessage>(json, s_options),
+			"host_info" => JsonSerializer.Deserialize<HostInfoMessage>(json, s_options),
+			"host_thumbnail" => JsonSerializer.Deserialize<HostThumbnailMessage>(json, s_options),
 			_ => null,
 		};
 	}

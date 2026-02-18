@@ -35,6 +35,32 @@ public class PubSubClient : IDisposable
 
 	public bool Is_Connected => m_ws?.State == WebSocketState.Open;
 
+	/// <summary>
+	/// Serializes a message and sends it to the session group via the PubSub WebSocket.
+	/// </summary>
+	public async Task Send_Message(Message message)
+	{
+		if (m_ws?.State != WebSocketState.Open)
+			return;
+
+		var message_json = MessageParser.Serialize(message);
+
+		// Embed the serialized message as a proper JSON object inside the PubSub envelope
+		using var message_doc = JsonDocument.Parse(message_json);
+		var envelope = JsonSerializer.Serialize(new
+		{
+			type = "sendToGroup",
+			group = m_session_code,
+			noEcho = true,
+			dataType = "json",
+			data = message_doc.RootElement,
+		});
+
+		var bytes = Encoding.UTF8.GetBytes(envelope);
+		var ct = m_cts?.Token ?? CancellationToken.None;
+		await m_ws.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, ct);
+	}
+
 	public async Task Connect(string negotiate_url, string session_code, string user_id)
 	{
 		m_negotiate_url = negotiate_url;

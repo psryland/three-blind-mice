@@ -96,6 +96,55 @@ class Program
 		var host_id = $"host-{Guid.NewGuid():N}";
 		await pubsub.Connect(negotiate_url, session_code, host_id);
 
+		// Send host info (monitors + visible windows) to connected web clients
+		var windows = WindowEnumerator.Enumerate(monitors);
+		Console.WriteLine($"Enumerated {windows.Count} window(s).");
+
+		var host_info = new HostInfoMessage
+		{
+			Monitors = monitors.Select(m => new MonitorData
+			{
+				Index = m.Index,
+				Device = m.Device,
+				Left = m.Left,
+				Top = m.Top,
+				Width = m.Width,
+				Height = m.Height,
+				Is_Primary = m.Is_Primary,
+			}).ToList(),
+			Windows = windows.Select(w => new WindowData
+			{
+				Title = w.Title,
+				Left = w.Left,
+				Top = w.Top,
+				Width = w.Width,
+				Height = w.Height,
+				Monitor_Index = w.Monitor_Index,
+			}).ToList(),
+		};
+		await pubsub.Send_Message(host_info);
+		Console.WriteLine("Sent host info.");
+
+		// Capture and send a screenshot thumbnail for each monitor
+		foreach (var mon in monitors)
+		{
+			var data_url = ScreenCapture.Capture_Monitor(mon.Left, mon.Top, mon.Width, mon.Height);
+			if (data_url != null)
+			{
+				var thumbnail_msg = new HostThumbnailMessage
+				{
+					Monitor_Index = mon.Index,
+					Data_Url = data_url,
+				};
+				await pubsub.Send_Message(thumbnail_msg);
+				Console.WriteLine($"Sent thumbnail for monitor [{mon.Index}].");
+			}
+			else
+			{
+				Console.Error.WriteLine($"Failed to capture thumbnail for monitor [{mon.Index}].");
+			}
+		}
+
 		// Create system tray icon
 		using var tray = new TrayIcon(() =>
 		{
