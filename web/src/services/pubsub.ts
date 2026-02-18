@@ -1,0 +1,293 @@
+// Azure Web PubSub client service for Three Blind Mice
+
+// --- Message types matching the application protocol ---
+
+export interface CursorMessage {
+	type: 'cursor';
+	user_id: string;
+	name: string;
+	colour: string;
+	x: number;
+	y: number;
+	button: number;
+}
+
+export interface JoinMessage {
+	type: 'join';
+	user_id: string;
+	name: string;
+	colour: string;
+}
+
+export interface LeaveMessage {
+	type: 'leave';
+	user_id: string;
+}
+
+export interface HostConfigMessage {
+	type: 'host_config';
+	aspect_ratio: number;
+	monitor_name: string;
+}
+
+export type PubSubMessage = CursorMessage | JoinMessage | LeaveMessage | HostConfigMessage;
+
+// --- Azure Web PubSub JSON subprotocol envelope types ---
+
+interface SendToGroupEnvelope {
+	type: 'sendToGroup';
+	group: string;
+	dataType: 'json';
+	data: PubSubMessage;
+}
+
+interface JoinGroupEnvelope {
+	type: 'joinGroup';
+	group: string;
+}
+
+// --- Negotiate API response ---
+
+interface NegotiateResponse {
+	url: string;
+}
+
+// --- PubSubClient ---
+
+const SUBPROTOCOL = 'json.webpubsub.azure.v1';
+const THROTTLE_MS = 50; // ~20fps
+const MAX_BACKOFF_MS = 30_000;
+const INITIAL_BACKOFF_MS = 1_000;
+
+export class PubSubClient {
+	private m_negotiate_url: string;
+	private m_ws: WebSocket | null = null;
+	private m_room: string = '';
+	private m_user_id: string = '';
+	private m_name: string = '';
+	private m_colour: string = '';
+	private m_connected: boolean = false;
+	private m_should_reconnect: boolean = false;
+	private m_reconnect_delay: number = INITIAL_BACKOFF_MS;
+	private m_reconnect_timer: ReturnType<typeof setTimeout> | null = null;
+	private m_message_callback: ((msg: PubSubMessage) => void) | null = null;
+	private m_connection_callback: ((connected: boolean) => void) | null = null;
+
+	// Throttle state for send_cursor
+	private m_last_send_time: number = 0;
+	private m_pending_cursor_timer: ReturnType<typeof setTimeout> | null = null;
+
+	constructor(negotiate_url: string = '/api/negotiate') {
+		this.m_negotiate_url = negotiate_url;
+	}
+
+	/**
+	 * Connect to a room via Azure Web PubSub.
+	 * Calls the negotiate endpoint to obtain a WebSocket URL, then opens the connection.
+	 */
+	async connect(room: string, user_id: string, name: string, colour: string): Promise<void> {
+		this.m_room = room;
+		this.m_user_id = user_id;
+		this.m_name = name;
+		this.m_colour = colour;
+		this.m_should_reconnect = true;
+		this.m_reconnect_delay = INITIAL_BACKOFF_MS;
+
+		await this.Open_Connection();
+	}
+
+	/**
+	 * Disconnect from the room gracefully.
+	 */
+	disconnect(): void {
+		this.m_should_reconnect = false;
+		this.Clear_Reconnect_Timer();
+		this.Clear_Pending_Cursor();
+
+		if (this.m_ws && this.m_ws.readyState === WebSocket.OPEN) {
+			// Send leave message before closing
+			const leave_msg: LeaveMessage = {
+				type: 'leave',
+				user_id: this.m_user_id,
+			};
+			this.Send_To_Group(leave_msg);
+			this.m_ws.close();
+		}
+
+		this.m_ws = null;
+		this.Set_Connected(false);
+	}
+
+	/**
+	 * Send a cursor position update to the room group, throttled to ~20fps.
+	 */
+	send_cursor(x: number, y: number, button: number): void {
+		const msg: CursorMessage = {
+			type: 'cursor',
+			user_id: this.m_user_id,
+			name: this.m_name,
+			colour: this.m_colour,
+			x,
+			y,
+			button,
+		};
+
+		const now = performance.now();
+		const elapsed = now - this.m_last_send_time;
+
+		if (elapsed >= THROTTLE_MS) {
+			// Enough time has passed — send immediately
+			this.Clear_Pending_Cursor();
+			this.m_last_send_time = now;
+			this.Send_To_Group(msg);
+		} else {
+			// Schedule a send at the end of the throttle window
+			this.Clear_Pending_Cursor();
+			this.m_pending_cursor_timer = setTimeout(() => {
+				this.m_pending_cursor_timer = null;
+				this.m_last_send_time = performance.now();
+				this.Send_To_Group(msg);
+			}, THROTTLE_MS - elapsed);
+		}
+	}
+
+	/**
+	 * Register a callback for incoming application messages.
+	 */
+	on_message(callback: (msg: PubSubMessage) => void): void {
+		this.m_message_callback = callback;
+	}
+
+	/**
+	 * Register a callback for connection state changes.
+	 */
+	on_connection_change(callback: (connected: boolean) => void): void {
+		this.m_connection_callback = callback;
+	}
+
+	// --- Private helpers ---
+
+	private async Open_Connection(): Promise<void> {
+		const url = await this.Negotiate();
+		if (!url) return;
+
+		this.m_ws = new WebSocket(url, SUBPROTOCOL);
+
+		this.m_ws.onopen = () => {
+			this.m_reconnect_delay = INITIAL_BACKOFF_MS;
+			this.Set_Connected(true);
+
+			// Join the room group
+			const join_group: JoinGroupEnvelope = {
+				type: 'joinGroup',
+				group: this.m_room,
+			};
+			this.m_ws!.send(JSON.stringify(join_group));
+
+			// Announce presence
+			const join_msg: JoinMessage = {
+				type: 'join',
+				user_id: this.m_user_id,
+				name: this.m_name,
+				colour: this.m_colour,
+			};
+			this.Send_To_Group(join_msg);
+		};
+
+		this.m_ws.onmessage = (event: MessageEvent) => {
+			this.Handle_Message(event);
+		};
+
+		this.m_ws.onclose = () => {
+			this.Set_Connected(false);
+			this.Schedule_Reconnect();
+		};
+
+		this.m_ws.onerror = () => {
+			// onclose will fire after onerror, which handles reconnection
+			this.m_ws?.close();
+		};
+	}
+
+	private async Negotiate(): Promise<string | null> {
+		try {
+			const response = await fetch(this.m_negotiate_url, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					room: this.m_room,
+					user_id: this.m_user_id,
+				}),
+			});
+			if (!response.ok) {
+				console.error(`Negotiate failed: ${response.status}`);
+				return null;
+			}
+			const data: NegotiateResponse = await response.json();
+			return data.url;
+		} catch (err) {
+			console.error('Negotiate error:', err);
+			return null;
+		}
+	}
+
+	private Send_To_Group(data: PubSubMessage): void {
+		if (!this.m_ws || this.m_ws.readyState !== WebSocket.OPEN) return;
+
+		const envelope: SendToGroupEnvelope = {
+			type: 'sendToGroup',
+			group: this.m_room,
+			dataType: 'json',
+			data,
+		};
+		this.m_ws.send(JSON.stringify(envelope));
+	}
+
+	private Handle_Message(event: MessageEvent): void {
+		if (!this.m_message_callback) return;
+
+		try {
+			const envelope = JSON.parse(event.data as string);
+
+			// Azure Web PubSub JSON subprotocol wraps group messages
+			if (envelope.type === 'message' && envelope.data) {
+				this.m_message_callback(envelope.data as PubSubMessage);
+			}
+		} catch {
+			// Ignore malformed messages
+		}
+	}
+
+	private Set_Connected(connected: boolean): void {
+		if (this.m_connected === connected) return;
+		this.m_connected = connected;
+		this.m_connection_callback?.(connected);
+	}
+
+	private Schedule_Reconnect(): void {
+		if (!this.m_should_reconnect) return;
+
+		this.Clear_Reconnect_Timer();
+		this.m_reconnect_timer = setTimeout(async () => {
+			this.m_reconnect_timer = null;
+			await this.Open_Connection();
+		}, this.m_reconnect_delay);
+
+		// Exponential backoff
+		this.m_reconnect_delay = Math.min(this.m_reconnect_delay * 2, MAX_BACKOFF_MS);
+	}
+
+	private Clear_Reconnect_Timer(): void {
+		if (this.m_reconnect_timer !== null) {
+			clearTimeout(this.m_reconnect_timer);
+			this.m_reconnect_timer = null;
+		}
+	}
+
+	private Clear_Pending_Cursor(): void {
+		if (this.m_pending_cursor_timer !== null) {
+			clearTimeout(this.m_pending_cursor_timer);
+			this.m_pending_cursor_timer = null;
+		}
+	}
+}
