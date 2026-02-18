@@ -2,50 +2,148 @@
 .constrain-panel {
 	background: var(--color-card-bg);
 	border: 1px solid var(--color-card-border);
-	border-radius: 8px;
-	padding: 1rem 1.25rem;
+	border-radius: var(--radius);
+	padding: 1.1rem 1.25rem;
 	text-align: left;
+	box-shadow: var(--shadow-sm);
 }
 
 .constrain-panel h3 {
 	margin: 0 0 0.75rem;
-	font-size: 0.8rem;
+	font-size: 0.75rem;
 	font-weight: 600;
 	color: var(--color-primary);
 	text-transform: uppercase;
-	letter-spacing: 0.04em;
+	letter-spacing: 0.05em;
 }
 
-.constrain-panel-options {
+/* --- Monitor layout container --- */
+.monitor-layout {
+	position: relative;
+	margin: 0 auto 0.75rem;
+}
+
+/* --- Individual monitor thumbnail --- */
+.monitor-thumb {
+	position: absolute;
+	border: 2px solid #d0d5dd;
+	border-radius: 6px;
+	background: #f0f2f5;
+	overflow: hidden;
+	cursor: pointer;
+	padding: 0;
 	display: flex;
 	flex-direction: column;
-	gap: 0.5rem;
+	transition: border-color 0.15s, box-shadow 0.15s;
+	box-sizing: border-box;
 }
 
-.constrain-panel-option {
+.monitor-thumb:hover {
+	border-color: var(--color-primary);
+}
+
+.monitor-thumb.selected {
+	border-color: var(--color-primary);
+	box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.35);
+}
+
+/* --- Screenshot preview image --- */
+.monitor-preview {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	position: absolute;
+	inset: 0;
+	border-radius: 4px;
+}
+
+/* --- Placeholder when no screenshot captured --- */
+.monitor-placeholder {
+	flex: 1;
 	display: flex;
 	align-items: center;
-	gap: 0.5rem;
+	justify-content: center;
+	min-height: 0;
+}
+
+.monitor-icon {
+	font-size: 1.6rem;
+	opacity: 0.35;
+	line-height: 1;
+}
+
+/* --- Bottom label bar overlaid on thumbnail --- */
+.monitor-label-bar {
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 2px 5px;
+	background: rgba(255, 255, 255, 0.85);
+	backdrop-filter: blur(4px);
+	border-radius: 0 0 4px 4px;
+	z-index: 1;
+}
+
+.monitor-name {
+	font-size: 0.6rem;
+	color: #333;
+	font-weight: 500;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.monitor-res {
+	font-size: 0.55rem;
+	color: #888;
+	white-space: nowrap;
+	flex-shrink: 0;
+	margin-left: 4px;
+}
+
+/* --- Capture preview button --- */
+.monitor-capture-btn {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	background: rgba(0, 0, 0, 0.06);
+	border: 1px solid rgba(0, 0, 0, 0.12);
+	border-radius: 50%;
+	width: 28px;
+	height: 28px;
+	font-size: 0.75rem;
 	cursor: pointer;
-	font-size: 0.9rem;
-	color: var(--color-text);
-	padding: 0.35rem 0.5rem;
-	border-radius: 6px;
-	transition: background 0.12s;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	opacity: 0;
+	transition: opacity 0.15s, background 0.15s;
+	z-index: 2;
+	padding: 0;
 }
 
-.constrain-panel-option:hover {
-	background: #F5F7FA;
+.monitor-thumb:hover .monitor-capture-btn {
+	opacity: 1;
 }
 
-.constrain-panel-option input[type="radio"] {
-	accent-color: var(--color-primary);
-	width: 16px;
-	height: 16px;
+.monitor-capture-btn:hover {
+	background: rgba(0, 0, 0, 0.12);
+}
+
+.monitor-capture-btn:disabled {
+	opacity: 0.3;
+	cursor: wait;
+}
+
+/* --- Selected hint text below thumbnails --- */
+.monitor-selected-hint {
 	margin: 0;
-	cursor: pointer;
-}
-
-.constrain-panel-option label {
-	cursor: pointer;
+	font-size: 0.8rem;
+	color: #666;
+	text-align: center;
 }

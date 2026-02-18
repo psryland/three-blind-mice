@@ -2,16 +2,16 @@
 button {
 	padding: 0.5rem 1rem;
 	border: 1px solid var(--color-card-border);
-	border-radius: 6px;
+	border-radius: var(--radius-sm);
 	background: #fff;
 	cursor: pointer;
 	font-size: 0.9rem;
 	font-weight: 500;
-	transition: background 0.15s, border-color 0.15s;
+	transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
 }
 
 button:hover:not(:disabled) {
-	background: #F5F5F5;
+	background: #F5F7FA;
 }
 
 button:disabled {
@@ -24,11 +24,13 @@ button:disabled {
 	background: var(--color-primary);
 	color: #fff;
 	border-color: var(--color-primary);
+	box-shadow: 0 1px 3px rgba(59, 111, 212, 0.25);
 }
 
 .btn-primary:hover:not(:disabled) {
 	background: var(--color-primary-hover);
 	border-color: var(--color-primary-hover);
+	box-shadow: 0 2px 6px rgba(59, 111, 212, 0.3);
 }
 
 /* Room panel container */
@@ -42,8 +44,9 @@ button:disabled {
 .room-section {
 	background: var(--color-card-bg);
 	border: 1px solid var(--color-card-border);
-	border-radius: 8px;
+	border-radius: var(--radius);
 	padding: 1.25rem;
+	box-shadow: var(--shadow-sm);
 }
 
 .room-section h3 {
@@ -57,7 +60,7 @@ button:disabled {
 .room-divider {
 	text-align: center;
 	color: var(--color-text-muted);
-	font-size: 0.85rem;
+	font-size: 0.8rem;
 	font-style: italic;
 	position: relative;
 	margin: 0.25rem 0;
@@ -89,9 +92,9 @@ button:disabled {
 
 .join-controls input {
 	flex: 1;
-	padding: 0.5rem 0.75rem;
+	padding: 0.55rem 0.8rem;
 	border: 1px solid var(--color-card-border);
-	border-radius: 6px;
+	border-radius: var(--radius-sm);
 	font-size: 0.9rem;
 	color: var(--color-text);
 }
@@ -99,7 +102,7 @@ button:disabled {
 .join-controls input:focus {
 	outline: none;
 	border-color: var(--color-primary);
-	box-shadow: 0 0 0 3px rgba(74, 144, 217, 0.15);
+	box-shadow: 0 0 0 3px var(--color-primary-light);
 }
 
 /* Create room button full width */
@@ -111,9 +114,10 @@ button:disabled {
 .room-active {
 	background: var(--color-card-bg);
 	border: 1px solid var(--color-card-border);
-	border-radius: 8px;
+	border-radius: var(--radius);
 	padding: 1.25rem;
 	text-align: center;
+	box-shadow: var(--shadow-sm);
 }
 
 .room-active h2 {
@@ -125,8 +129,8 @@ button:disabled {
 
 .room-code {
 	font-family: "Cascadia Code", "Fira Code", "Consolas", monospace;
-	font-size: 1.5em;
-	letter-spacing: 0.12em;
+	font-size: 1.6em;
+	letter-spacing: 0.14em;
 	color: var(--color-primary);
 	font-weight: 700;
 }
@@ -141,10 +145,10 @@ button:disabled {
 	flex: 1;
 	padding: 0.45rem 0.6rem;
 	border: 1px solid var(--color-card-border);
-	border-radius: 6px;
+	border-radius: var(--radius-sm);
 	font-size: 0.8rem;
-	color: var(--color-text-muted);
-	background: #F8F9FA;
+	color: var(--color-text-secondary);
+	background: #F7F8FA;
 }
 
 .shareable-url button {
@@ -158,7 +162,7 @@ button:disabled {
 	color: white;
 	border: none;
 	padding: 0.5rem 1.5rem;
-	border-radius: 6px;
+	border-radius: var(--radius-sm);
 	cursor: pointer;
 	font-size: 0.9rem;
 	font-weight: 500;
