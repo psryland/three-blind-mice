@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
@@ -21,6 +22,11 @@ public class PubSubClient : IDisposable
 	// Reconnection backoff parameters
 	private const int INITIAL_BACKOFF_MS = 1000;
 	private const int MAX_BACKOFF_MS = 30000;
+
+	// Security limits
+	private const int MAX_MESSAGE_SIZE = 4096;
+	private const int MAX_MESSAGES_PER_SECOND = 30;
+	private readonly ConcurrentDictionary<string, (int count, long window_start)> m_rate_limits = new();
 
 	public event Action<Message>? On_Message;
 	public event Action<string>? On_Error;
@@ -169,6 +175,10 @@ public class PubSubClient : IDisposable
 						message_bytes.Write(buffer, 0, result.Count);
 					}
 
+					// Reject messages larger than 4KB
+					if (message_bytes.Length > MAX_MESSAGE_SIZE)
+						continue;
+
 					var raw_json = Encoding.UTF8.GetString(message_bytes.ToArray());
 					Process_Raw_Message(raw_json);
 				}
@@ -213,14 +223,34 @@ public class PubSubClient : IDisposable
 					inner_json = data_prop.GetRawText();
 
 				var msg = MessageParser.Parse(inner_json);
-				if (msg != null)
-					On_Message?.Invoke(msg);
+				if (msg == null)
+					return;
+
+				// Per-user rate limit for cursor messages (drop excess beyond 30/sec)
+				if (msg is CursorMessage cursor_msg && Is_Rate_Limited(cursor_msg.User_Id))
+					return;
+
+				On_Message?.Invoke(msg);
 			}
 		}
 		catch (JsonException)
 		{
 			// Ignore malformed messages
 		}
+	}
+
+	private bool Is_Rate_Limited(string user_id)
+	{
+		var now = Environment.TickCount64;
+		var state = m_rate_limits.AddOrUpdate(user_id,
+			_ => (1, now),
+			(_, existing) =>
+			{
+				if (now - existing.window_start >= 1000)
+					return (1, now);
+				return (existing.count + 1, existing.window_start);
+			});
+		return state.count > MAX_MESSAGES_PER_SECOND;
 	}
 
 	private async Task Reconnect(CancellationToken ct)

@@ -75,6 +75,8 @@ public static class MessageParser
 	private static readonly JsonSerializerOptions s_options = new()
 	{
 		PropertyNameCaseInsensitive = true,
+		NumberHandling = JsonNumberHandling.Strict,
+		MaxDepth = 5,
 	};
 
 	public static Message? Parse(string json)

@@ -24,6 +24,7 @@ public class CursorState
 	public void Update_Cursor(CursorMessage msg)
 	{
 		// Security: validate and clamp inputs
+		var user_id = msg.User_Id.Length > 50 ? msg.User_Id[..50] : msg.User_Id;
 		var name = msg.Name.Length > 20 ? msg.Name[..20] : msg.Name;
 		var x = Math.Clamp(msg.X, 0.0, 1.0);
 		var y = Math.Clamp(msg.Y, 0.0, 1.0);
@@ -32,13 +33,13 @@ public class CursorState
 		if (!Is_Valid_Colour(msg.Colour))
 			return;
 
-		if (m_cursors.Count >= MAX_USERS && !m_cursors.ContainsKey(msg.User_Id))
+		if (m_cursors.Count >= MAX_USERS && !m_cursors.ContainsKey(user_id))
 			return;
 
-		m_cursors.AddOrUpdate(msg.User_Id,
+		m_cursors.AddOrUpdate(user_id,
 			_ => new CursorInfo
 			{
-				User_Id = msg.User_Id,
+				User_Id = user_id,
 				Name = name,
 				Colour = msg.Colour,
 				X = x,
@@ -60,13 +61,14 @@ public class CursorState
 
 	public void Add_User(JoinMessage msg)
 	{
+		var user_id = msg.User_Id.Length > 50 ? msg.User_Id[..50] : msg.User_Id;
 		var name = msg.Name.Length > 20 ? msg.Name[..20] : msg.Name;
 		if (!Is_Valid_Colour(msg.Colour) || m_cursors.Count >= MAX_USERS)
 			return;
 
-		m_cursors.TryAdd(msg.User_Id, new CursorInfo
+		m_cursors.TryAdd(user_id, new CursorInfo
 		{
-			User_Id = msg.User_Id,
+			User_Id = user_id,
 			Name = name,
 			Colour = msg.Colour,
 		});
