@@ -82,7 +82,7 @@ function App() {
 			case 'host_thumbnail':
 				set_monitor_thumbnails((prev) => {
 					const next = new Map(prev);
-					next.set(msg.monitor_index, msg.image_data);
+					next.set(msg.monitor_index, msg.data_url);
 					return next;
 				});
 				break;

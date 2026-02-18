@@ -32,7 +32,7 @@ export interface HostConfigMessage {
 
 export interface MonitorInfo {
 	index: number;
-	label: string;
+	device: string;
 	left: number;
 	top: number;
 	width: number;
@@ -58,7 +58,7 @@ export interface HostInfoMessage {
 export interface HostThumbnailMessage {
 	type: 'host_thumbnail';
 	monitor_index: number;
-	image_data: string;
+	data_url: string;
 }
 
 export interface HostConstraintMessage {

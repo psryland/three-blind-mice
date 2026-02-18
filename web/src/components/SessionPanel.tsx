@@ -77,7 +77,7 @@ export default function SessionPanel(props: SessionPanelProps) {
 		<div className="session-panel">
 			<div className="session-section">
 				<h3>Start Session</h3>
-				<p className="session-section-hint">Host a session and share your screen with remote users</p>
+				<p className="session-section-hint">Host a session and see remote user's mouse pointers on your screen</p>
 				<button className="btn-primary" onClick={props.on_start_session}>Start Session</button>
 			</div>
 

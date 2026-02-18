@@ -109,12 +109,12 @@ export default function ConstrainPanel({ monitors, thumbnails, windows, on_const
 									className={`monitor-thumb${idx === selected_monitor ? ' selected' : ''}`}
 									style={{ left: x, top: y, width: w, height: h }}
 									onClick={() => handle_monitor_select(idx)}
-									title={`${monitor.label} — ${monitor.width}×${monitor.height}${monitor.is_primary ? ' (Primary)' : ''}`}
+									title={`${monitor.device} — ${monitor.width}×${monitor.height}${monitor.is_primary ? ' (Primary)' : ''}`}
 								>
 									{thumb ? (
 										<img
 											src={thumb}
-											alt={monitor.label}
+											alt={monitor.device}
 											className="monitor-preview"
 											draggable={false}
 										/>
@@ -126,7 +126,7 @@ export default function ConstrainPanel({ monitors, thumbnails, windows, on_const
 
 									<div className="monitor-label-bar">
 										<span className="monitor-name">
-											{monitor.is_primary ? '★ ' : ''}{monitor.label}
+											{monitor.is_primary ? '★ ' : ''}{monitor.device}
 										</span>
 										<span className="monitor-res">{monitor.width}×{monitor.height}</span>
 									</div>
@@ -137,7 +137,7 @@ export default function ConstrainPanel({ monitors, thumbnails, windows, on_const
 
 					{monitors.length > 1 && (
 						<p className="monitor-selected-hint">
-							Selected: <strong>{monitors[selected_monitor]?.label}</strong>
+							Selected: <strong>{monitors[selected_monitor]?.device}</strong>
 						</p>
 					)}
 				</>

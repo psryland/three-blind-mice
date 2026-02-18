@@ -125,7 +125,89 @@ internal sealed class TrayIcon : IDisposable
 			0, 0, 0, 0,
 			IntPtr.Zero, IntPtr.Zero, wc.hInstance, IntPtr.Zero);
 
-		m_icon = LoadIcon(IntPtr.Zero, (IntPtr)IDI_APPLICATION);
+		m_icon = Create_Mouse_Icon();
+	}
+
+	/// <summary>
+	/// Creates a 16x16 mouse face icon in memory — cute mouse on blue background.
+	/// Uses CreateIcon with hardcoded BGRA pixel data to avoid resource files.
+	/// </summary>
+	private static IntPtr Create_Mouse_Icon()
+	{
+		const int S = 16;
+
+		// Colour palette (BGRA)
+		const uint BG   = 0xFF4A72B8; // blue background
+		const uint FACE = 0xFFC8AAC0; // pink/grey mouse face
+		const uint EAR  = 0xFFB496AA; // ear outer
+		const uint EARI = 0xFFE6BED2; // ear inner pink
+		const uint EYE  = 0xFF282828; // eyes
+		const uint NOSE = 0xFFDC96AA; // nose pink
+
+		// 16x16 pattern: . = BG, F = face, E = ear, e = ear inner, X = eye, N = nose
+		string[] pattern =
+		{
+			"................",
+			"..EE......EE....",
+			".EeeE....EeeE...",
+			".EeeE....EeeE...",
+			"..EEFFFFFFEE....",
+			"...FFFFFFFF.....",
+			"..FFFFFFFFFF....",
+			"..FFXFFFXFFF....",
+			"..FFFFFFFFFF....",
+			"...FFFNNFFF.....",
+			"...FFFFFFFF.....",
+			"....FFFFFF......",
+			".....FFFF.......",
+			"................",
+			"................",
+			"................",
+		};
+
+		var pixel_data = new uint[S * S];
+		for (var y = 0; y < S; y++)
+		{
+			for (var x = 0; x < S; x++)
+			{
+				pixel_data[y * S + x] = pattern[y][x] switch
+				{
+					'F' => FACE,
+					'E' => EAR,
+					'e' => EARI,
+					'X' => EYE,
+					'N' => NOSE,
+					_   => BG,
+				};
+			}
+		}
+
+		// CreateIcon expects XOR mask (colour) and AND mask (transparency)
+		// Pixel data is bottom-up BGRA for the XOR mask
+		var xor_mask = new byte[S * S * 4];
+		for (var y = 0; y < S; y++)
+		{
+			for (var x = 0; x < S; x++)
+			{
+				// Flip vertically for bottom-up DIB
+				var src = pixel_data[y * S + x];
+				var dst_offset = ((S - 1 - y) * S + x) * 4;
+				xor_mask[dst_offset + 0] = (byte)(src & 0xFF);         // B
+				xor_mask[dst_offset + 1] = (byte)((src >> 8) & 0xFF);  // G
+				xor_mask[dst_offset + 2] = (byte)((src >> 16) & 0xFF); // R
+				xor_mask[dst_offset + 3] = 0xFF;                       // A
+			}
+		}
+
+		// AND mask: all zeros = fully opaque (1 bit per pixel, padded to WORD boundary)
+		var and_mask = new byte[S * ((S + 15) / 16) * 2]; // all zeros
+
+		var h = CreateIcon(GetModuleHandle(null), S, S, 1, 32, and_mask, xor_mask);
+		if (h != IntPtr.Zero)
+			return h;
+
+		// Fallback to default icon if creation failed
+		return LoadIcon(IntPtr.Zero, (IntPtr)IDI_APPLICATION);
 	}
 
 	private void AddTrayIcon()
@@ -304,6 +386,9 @@ internal sealed class TrayIcon : IDisposable
 
 	[DllImport("user32.dll")]
 	private static extern IntPtr LoadIcon(IntPtr hInstance, IntPtr lpIconName);
+
+	[DllImport("user32.dll", SetLastError = true)]
+	private static extern IntPtr CreateIcon(IntPtr hInstance, int nWidth, int nHeight, byte cPlanes, byte cBitsPixel, byte[] lpbANDbits, byte[] lpbXORbits);
 
 	[DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
 	private static extern IntPtr GetModuleHandle(string? lpModuleName);
